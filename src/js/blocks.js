@@ -1,6 +1,6 @@
 const javascriptGenerator = Blockly.JavaScript;
 
-// --- BLOCK DEFINITIONEN ---
+
 
 Blockly.Blocks['event_flag'] = {
     init: function() {
@@ -63,7 +63,7 @@ Blockly.Blocks['colour_picker_custom'] = {
     }
 };
 
-// --- GENERATOREN ---
+
 
 javascriptGenerator.forBlock['event_flag'] = () => "";
 
@@ -91,7 +91,7 @@ javascriptGenerator.forBlock['colour_picker_custom'] = function(block, generator
     return [generator.quote_(block.getFieldValue('COL')), javascriptGenerator.ORDER_ATOMIC];
 };
 
-// INITIALISIERUNG
+
 window.addEventListener('load', () => {
     window.workspace = Blockly.inject('blocklyArea', {
         toolbox: document.getElementById('toolbox'),
