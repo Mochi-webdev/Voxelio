@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Engine</title>
+    <link rel="stylesheet" href="src/style.css">
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="blocklyArea"></div>
+
+    <div id="sidePanel">
+        <div class="toolbar">
+            <button class="btn run" onclick="App.run()">🚩 START</button>
+            <button class="btn stop" onclick="App.stop()">🛑 STOP</button>
+        </div>
+        <div id="canvas3d"></div>
+        <div id="log">> System bereit.</div>
+    </div>
+
+    <xml id="toolbox" style="display: none">
+        <category name="Events" colour="#FFD500">
+            <block type="event_flag"></block>
+        </category>
+        <category name="3D Formen" colour="#4C97FF">
+            <block type="create_shape"></block>
+            <block type="math_number"><field name="NUM">0</field></block>
+        </category>
+        <category name="Bewegung" colour="#5CB1D6">
+            <block type="set_position"></block>
+            <block type="rotate_forever"></block>
+        </category>
+        <category name="Farben" colour="#9966FF">
+            <block type="colour_picker_custom"></block>
+        </category>
+    </xml>
+
+    <script src="src/js/engine.js"></script>
+    <script src="src/js/blocks.js"></script>
+</body>
+</html>
