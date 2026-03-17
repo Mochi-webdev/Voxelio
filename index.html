@@ -19,6 +19,12 @@
             <button class="btn stop" onclick="App.stop()">🛑 STOP</button>
         </div>
         <div id="canvas3d"></div>
+        
+        <div id="explorerContainer">
+            <div class="explorer-header">Scene Explorer</div>
+            <div id="sceneList"></div>
+        </div>
+
         <div id="log">> System bereit.</div>
     </div>
 
@@ -26,12 +32,16 @@
         <category name="Events" colour="#FFD500">
             <block type="event_flag"></block>
         </category>
+        <category name="Struktur" colour="#AA66CC">
+            <block type="create_group"></block>
+        </category>
         <category name="3D Formen" colour="#4C97FF">
             <block type="create_shape"></block>
-            <block type="math_number"><field name="NUM">0</field></block>
+            <block type="math_number"><field name="NUM">1</field></block>
         </category>
-        <category name="Bewegung" colour="#5CB1D6">
+        <category name="Transformation" colour="#5CB1D6">
             <block type="set_position"></block>
+            <block type="set_scale"></block>
             <block type="rotate_forever"></block>
         </category>
         <category name="Farben" colour="#9966FF">
