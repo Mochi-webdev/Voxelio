@@ -1,7 +1,6 @@
 window.App = {
     scene: null, camera: null, renderer: null, controls: null,
     objects: {},
-    animations: [],
 
     init: function() {
         const container = document.getElementById('canvas3d');
@@ -11,10 +10,10 @@ window.App = {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(this.renderer.domElement);
 
-        this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const light = new THREE.PointLight(0xffffff, 1);
-        light.position.set(10, 10, 10);
-        this.scene.add(light);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.5);
+        sun.position.set(5, 10, 7);
+        this.scene.add(sun);
         this.scene.add(new THREE.GridHelper(20, 20, 0x444444, 0x888888));
 
         this.camera.position.set(8, 8, 8);
@@ -22,25 +21,49 @@ window.App = {
         this.animate();
     },
 
-    spawn: function(type, color, name) {
-        if (this.objects[name]) this.scene.remove(this.objects[name]);
-        
-        let geo;
-        if(type === 'sphere') geo = new THREE.SphereGeometry(1, 32, 32);
-        else geo = new THREE.BoxGeometry(2, 2, 2);
+    spawn: function(type, color, name, parentName = "Szene") {
+        if (this.objects[name]) {
+            const old = this.objects[name];
+            if (old.parent) old.parent.remove(old);
+        }
 
-        const mat = new THREE.MeshStandardMaterial({ color: color });
-        const mesh = new THREE.Mesh(geo, mat);
-        
-        this.scene.add(mesh);
-        this.objects[name] = mesh;
-        this.objects[name].userData.animations = []; // Speicher für Ticks
+        let obj;
+        if (type === 'group') {
+            obj = new THREE.Group();
+        } else {
+            let geo;
+            switch(type) {
+                case 'sphere': geo = new THREE.SphereGeometry(1, 32, 32); break;
+                case 'torus': geo = new THREE.TorusGeometry(1, 0.4, 16, 100); break;
+                case 'cylinder': geo = new THREE.CylinderGeometry(1, 1, 2, 32); break;
+                case 'cone': geo = new THREE.ConeGeometry(1, 2, 32); break;
+                case 'ring': geo = new THREE.RingGeometry(0.5, 1, 32); break;
+                default: geo = new THREE.BoxGeometry(2, 2, 2);
+            }
+            const mat = new THREE.MeshStandardMaterial({ color: color, side: THREE.DoubleSide });
+            obj = new THREE.Mesh(geo, mat);
+        }
+
+        obj.name = name;
+        obj.userData.type = type;
+        obj.userData.animations = [];
+
+        if (parentName !== "Szene" && this.objects[parentName]) {
+            this.objects[parentName].add(obj);
+        } else {
+            this.scene.add(obj);
+        }
+
+        this.objects[name] = obj;
+        this.updateExplorer();
     },
 
     transform: function(name, axis, value) {
-        if (this.objects[name]) {
-            this.objects[name].position[axis] = value;
-        }
+        if (this.objects[name]) this.objects[name].position[axis] = value;
+    },
+
+    setScale: function(name, value) {
+        if (this.objects[name]) this.objects[name].scale.set(value, value, value);
     },
 
     addRotation: function(name, axis, speed) {
@@ -51,17 +74,33 @@ window.App = {
         }
     },
 
+    updateExplorer: function() {
+        const list = document.getElementById('sceneList');
+        if (!list) return;
+        list.innerHTML = '';
+        this.buildTree(this.scene, list, 0);
+    },
+
+    buildTree: function(parent, container, depth) {
+        parent.children.forEach(child => {
+            if (this.objects[child.name]) {
+                const item = document.createElement('div');
+                item.className = 'explorer-item';
+                item.style.paddingLeft = (depth * 15) + "px";
+                const icon = child.userData.type === 'group' ? '📁' : '📦';
+                item.innerHTML = `${icon} ${child.name}`;
+                container.appendChild(item);
+                if (child.children.length > 0) this.buildTree(child, container, depth + 1);
+            }
+        });
+    },
+
     animate: function() {
         requestAnimationFrame(() => this.animate());
-        
-        // Führe alle registrierten Animationen aus
         for (let key in this.objects) {
             const obj = this.objects[key];
-            if (obj.userData.animations) {
-                obj.userData.animations.forEach(fn => fn());
-            }
+            if (obj.userData.animations) obj.userData.animations.forEach(fn => fn());
         }
-
         if(this.controls) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     },
@@ -69,19 +108,16 @@ window.App = {
     run: function() {
         this.stop();
         const code = Blockly.JavaScript.workspaceToCode(window.workspace);
-        try {
-            eval(code);
-            document.getElementById('log').innerText = "> Programm läuft...";
-        } catch(e) {
-            document.getElementById('log').innerText = "> Fehler: " + e.message;
-        }
+        try { eval(code); } catch(e) { console.error(e); }
     },
 
     stop: function() {
-        for (let id in this.objects) this.scene.remove(this.objects[id]);
+        for (let id in this.objects) {
+            const obj = this.objects[id];
+            if(obj.parent) obj.parent.remove(obj);
+        }
         this.objects = {};
-        document.getElementById('log').innerText = "> Gestoppt.";
+        this.updateExplorer();
     }
 };
-
 window.addEventListener('load', () => App.init());
