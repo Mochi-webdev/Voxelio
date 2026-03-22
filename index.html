@@ -71,16 +71,11 @@
         <category name="Licht" colour="#FF6680">
             <block type="set_light_intensity"></block>
         </category>
-        <category name="First Person" colour="#a55b80">
+        <category name="Controller" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>
-            <block type="fpc_move">
-                <value name="SPEED">
-                    <block type="math_number">
-                        <field name="NUM">0.1</field>
-                    </block>
-                </value>
-            </block>
+            <block type="fpc_move"></block>
+            <block type="set_view_mode"></block>
         </category>
 
         <category name="Steuerung" colour="#5CB1D6">

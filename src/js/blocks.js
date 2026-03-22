@@ -46,6 +46,16 @@ Blockly.Blocks['event_tick'] = {
     this.setColour(60);
   }
 };
+Blockly.Blocks['set_view_mode'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Sichtmodus auf")
+        .appendField(new Blockly.FieldDropdown([["First Person", "fp"], ["Third Person", "tp"]]), "MODE");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
+  }
+};
 
 
 const isConnected = (b) => { 
@@ -85,6 +95,9 @@ javascriptGenerator.forBlock['event_tick'] = (b, g) => {
     return `App.onTick(() => {\n${b.getNextBlock() ? g.blockToCode(b.getNextBlock()) : ""}});\n`;
 };
 
+javascriptGenerator.forBlock['set_view_mode'] = (b) => {
+  return `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
+};
 
 
 
@@ -128,12 +141,32 @@ window.Editor = {
         window.onmousemove = (e) => { if (active) { let w = window.innerWidth - e.clientX; if (w > 200 && w < 800) { s.style.width = w + 'px'; Blockly.svgResize(window.workspace); App.onResize(); } } };
         window.onmouseup = () => active = false;
     },
-    getAllCode() {
-        this.scripts[this.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
-        let code = "", t = new Blockly.Workspace();
-        Object.values(this.scripts).forEach(d => { if(d) { Blockly.serialization.workspaces.load(d, t); code += javascriptGenerator.workspaceToCode(t) + "\n"; t.clear(); } });
-        t.dispose();
-        return code;
-    }
+   getAllCode() {
+    // 1. Aktuellen Workspace im Speicher sichern
+    this.scripts[this.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
+    
+    let fullCode = "";
+    let tempWorkspace = new Blockly.Workspace();
+    
+    Object.values(this.scripts).forEach(saveData => {
+        if (saveData) {
+            tempWorkspace.clear();
+            Blockly.serialization.workspaces.load(saveData, tempWorkspace);
+            
+            // Hole alle "Top-Blöcke" (Blöcke ohne Vorgänger)
+            const topBlocks = tempWorkspace.getTopBlocks(false);
+            
+            topBlocks.forEach(block => {
+                // NUR wenn der Top-Block ein Event-Typ ist, generieren wir Code dafür
+                if (["event_flag", "event_key", "event_object_click", "event_tick"].includes(block.type)) {
+                    fullCode += javascriptGenerator.blockToCode(block) + "\n";
+                }
+            });
+        }
+    });
+    
+    tempWorkspace.dispose();
+    return fullCode;
+}
 };
 window.onload = () => Editor.init();

@@ -25,7 +25,7 @@ window.App = {
 
         this.scene.background = new THREE.Color(0x0b0b0e);
         this.scene.add(new THREE.GridHelper(30, 30, 0x222222, 0x333333));
-        
+
         this.camera.position.set(8, 8, 8);
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
 
@@ -71,26 +71,26 @@ window.App = {
         }
         obj.name = n;
         obj.userData = { animations: [] };
-        
-        if (p !== "Szene" && this.objects[p]) this.objects[p].add(obj); 
+
+        if (p !== "Szene" && this.objects[p]) this.objects[p].add(obj);
         else this.scene.add(obj);
-        
+
         this.objects[n] = obj;
         this.updateExplorer();
     },
 
     registerKeyEvent(k, f) { this.keyListeners[k.toLowerCase()] = f; },
-    
+
     onTick(callback) { this.tickListeners.push(callback); },
 
     move(n, a, v) { if (this.objects[n]) this.objects[n].position[a] += parseFloat(v); },
-    
+
     transform(n, a, v) { if (this.objects[n]) this.objects[n].position[a] = parseFloat(v); },
-    
+
     setScale(n, v) { if (this.objects[n]) this.objects[n].scale.set(v, v, v); },
-    
-    addRotation(n, a, s) { 
-        if (this.objects[n]) this.objects[n].userData.animations.push(() => this.objects[n].rotation[a] += s); 
+
+    addRotation(n, a, s) {
+        if (this.objects[n]) this.objects[n].userData.animations.push(() => this.objects[n].rotation[a] += s);
     },
 
     setLightIntensity(val) {
@@ -102,19 +102,19 @@ window.App = {
     // NUR EINE ANIMATE FUNKTION
     animate() {
         requestAnimationFrame(() => this.animate());
-        
+
         if (this.isRunning) {
             // Tick Events ausführen
             this.tickListeners.forEach(f => f());
-            
+
             // Standard Animationen ausführen
             Object.values(this.objects).forEach(o => {
-                if(o.userData && o.userData.animations) {
+                if (o.userData && o.userData.animations) {
                     o.userData.animations.forEach(f => f());
                 }
             });
         }
-        
+
         if (this.controls && this.controls.enabled) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     },
@@ -123,9 +123,9 @@ window.App = {
         this.fpcPlayer = this.objects[name];
         if (this.fpcPlayer) {
             this.fpcPlayer.add(this.camera);
-            this.camera.position.set(0, 1.6, 0); 
+            this.camera.position.set(0, 1.6, 0);
             this.camera.rotation.set(0, 0, 0); // Kamera-Rotation nullen
-            this.controls.enabled = false; 
+            this.controls.enabled = false;
             this.renderer.domElement.requestPointerLock();
         }
     },
@@ -136,7 +136,7 @@ window.App = {
         this.fpcPlayer.rotation.y -= this.mouseDelta.x * sensitivity;
         this.camera.rotation.x -= this.mouseDelta.y * sensitivity;
         this.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotation.x));
-        
+
         // Wichtig: Nach dem Frame MouseDelta zurücksetzen!
         this.mouseDelta = { x: 0, y: 0 };
     },
@@ -155,35 +155,38 @@ window.App = {
     },
 
     run() {
-        this.stop(); 
+        this.stop();
         this.isRunning = true;
         document.body.classList.add('running');
         try { eval(Editor.getAllCode()); } catch (e) { console.error(e); }
     },
 
     stop() {
-        this.isRunning = true; // Kurz auf true lassen zum Aufräumen falls nötig
         this.isRunning = false;
         document.body.classList.remove('running');
-        
-        // Kamera zurück in die Szene bringen, falls sie am Spieler klebt
-        this.scene.add(this.camera);
+
+        // Kamera vom Spieler lösen und zurück in die Welt-Szene
+        this.scene.attach(this.camera);
+
+        if (this.fpcPlayer) this.fpcPlayer.visible = true;
+
         this.camera.position.set(8, 8, 8);
-        this.camera.lookAt(0,0,0);
-        
-        // Aufräumen
+        this.camera.lookAt(0, 0, 0);
+
         Object.values(this.objects).forEach(o => this.scene.remove(o));
-        this.objects = {}; 
-        this.keyListeners = {}; 
-        this.tickListeners = []; 
+        this.objects = {};
+        this.keyListeners = {};
+        this.tickListeners = [];
         this.fpcPlayer = null;
         this.controls.enabled = true;
-        document.exitPointerLock();
+
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
         this.updateExplorer();
     },
-
     updateExplorer() {
-        let l = document.getElementById('sceneList'); 
+        let l = document.getElementById('sceneList');
         l.innerHTML = '';
         Object.keys(this.objects).forEach(name => {
             let i = document.createElement('div');
@@ -191,6 +194,31 @@ window.App = {
             i.innerHTML = `${this.objects[name] instanceof THREE.Group ? '📁' : '📦'} ${name}`;
             l.appendChild(i);
         });
+    },
+    setViewMode(mode) {
+        this.viewMode = mode;
+        if (!this.fpcPlayer || !this.camera) return;
+
+        // Wir stellen sicher, dass die Kamera ein Kind des Spielers ist
+        if (this.camera.parent !== this.fpcPlayer) {
+            this.fpcPlayer.add(this.camera);
+        }
+
+        if (mode === 'fp') {
+            // First Person: Exakt im Kopf des Spielers
+            this.camera.position.set(0, 1.6, 0);
+            this.camera.rotation.set(0, 0, 0);
+            this.fpcPlayer.visible = false;
+        } else {
+            // Third Person: Hinter und über dem Spieler
+            // Wir setzen die Position RELATIV zum Spieler-Zentrum
+            this.camera.position.set(0, 4, 8);
+
+            // WICHTIG: Die Kamera soll auf die Augenhöhe des Spielers schauen (relativ 0, 1.6, 0)
+            this.camera.lookAt(new THREE.Vector3(0, 1.6, 0));
+
+            this.fpcPlayer.visible = true;
+        }
     }
 };
 
