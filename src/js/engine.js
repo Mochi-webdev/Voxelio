@@ -1,3 +1,60 @@
+// Ganz oben in der engine.js, noch vor allen anderen Funktionen!
+window.Editor = {
+    scripts: { "main": {} }, 
+    currentScript: "main",
+
+    renderList() {
+        const list = document.getElementById('scriptList');
+        if (!list) return;
+        list.innerHTML = "";
+        Object.keys(this.scripts).forEach(name => {
+            const btn = document.createElement('div');
+            btn.className = `script-item ${this.currentScript === name ? 'active' : ''}`;
+            btn.innerHTML = `<span>${name}</span>`;
+            if (name !== 'main') {
+                btn.innerHTML += `<button onclick="event.stopPropagation(); Editor.deleteScript('${name}')" style="background:none; border:none; color:red; cursor:pointer; margin-left:8px;">×</button>`;
+            }
+            btn.onclick = () => this.switchScript(name);
+            list.appendChild(btn);
+        });
+    },
+
+    switchScript(name) {
+        if (!window.workspace) return;
+        
+        // 1. Speichere den aktuellen Tab im Objekt
+        const state = Blockly.serialization.workspaces.save(window.workspace);
+        this.scripts[this.currentScript] = state;
+
+        // 2. Wechsel zum neuen Tab
+        this.currentScript = name;
+        const data = this.scripts[name] || {};
+        
+        // 3. Lade die Blöcke (clear verhindert Überlappung)
+        window.workspace.clear();
+        Blockly.serialization.workspaces.load(data, window.workspace);
+        
+        this.renderList();
+        console.log(`Tab gewechselt zu: ${name}`);
+    },
+
+    createScript() {
+        const input = document.getElementById('scriptNameInput');
+        const name = input.value.trim().replace(/[^a-zA-Z0-9]/g, '_');
+        if (name && !this.scripts[name]) {
+            this.scripts[name] = {};
+            this.hideModal();
+            this.switchScript(name);
+            // Sofortiger Cloud-Sync nach Erstellung
+            const pName = new URLSearchParams(window.location.search).get('project');
+            if(pName) AuthHandler.saveToCloud(pName, true);
+        }
+        input.value = "";
+    },
+
+    showModal() { document.getElementById('nameModal').style.display = 'flex'; },
+    hideModal() { document.getElementById('nameModal').style.display = 'none'; }
+};
 window.App = {
     scene: null,
     camera: null,
@@ -531,6 +588,71 @@ window.App = {
             return true;
         }
         return false;
+    },
+    animateUI(id, type) {
+        const el = this.uiElements[id];
+        if (!el) return;
+
+        el.style.transition = "all 0.3s ease-out";
+
+        switch (type) {
+            case 'pop':
+                el.style.transform = "scale(1.2)";
+                setTimeout(() => el.style.transform = "scale(1)", 200);
+                break;
+            case 'fade_in':
+                el.style.opacity = "0";
+                el.style.display = "block";
+                setTimeout(() => el.style.opacity = "1", 10);
+                break;
+            case 'fade_out':
+                el.style.opacity = "0";
+                setTimeout(() => el.style.display = "none", 300);
+                break;
+            case 'slide_up':
+                const originalY = el.offsetTop;
+                el.style.top = (originalY + 20) + "px";
+                el.style.opacity = "0";
+                setTimeout(() => {
+                    el.style.top = originalY + "px";
+                    el.style.opacity = "1";
+                }, 10);
+                break;
+        }
+    },
+
+    // Für Hover-Effekte fügen wir CSS-Klassen dynamisch hinzu
+    setHoverEffect(id, scale, brightness) {
+        const el = this.uiElements[id];
+        if (!el) return;
+        el.style.transition = "transform 0.2s, filter 0.2s";
+        el.onmouseenter = () => {
+            el.style.transform = `scale(${scale})`;
+            el.style.filter = `brightness(${brightness}%)`;
+        };
+        el.onmouseleave = () => {
+            el.style.transform = "scale(1)";
+            el.style.filter = "brightness(100%)";
+        };
+    },
+    styleUI(id, props) {
+        const el = this.uiElements[id];
+        if (!el) return;
+
+        if (props.radius !== undefined) el.style.borderRadius = props.radius + "px";
+        if (props.bgColor !== undefined) {
+            // Wir wandeln Hex in RGBA um, falls Transparenz gewünscht ist
+            el.style.backgroundColor = props.bgColor;
+        }
+        if (props.opacity !== undefined) {
+            el.style.opacity = props.opacity;
+        }
+        if (props.strokeWidth !== undefined) {
+            el.style.border = `${props.strokeWidth}px solid ${props.strokeColor || '#ffffff'}`;
+        }
+        if (props.padding !== undefined) {
+            el.style.padding = props.padding + "px";
+        }
     },
 };
 

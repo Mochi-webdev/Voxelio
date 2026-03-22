@@ -4,23 +4,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voxelio</title>
+    <title>Voxelio - Engine</title>
+
     <link rel="stylesheet" href="src/style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script src="https://unpkg.com/@blockly/field-colour"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script defer src="src/js/engine.js"></script>
+    <script defer src="src/js/textureEditor.js"></script>
+    <script defer src="src/js/blocks.js"></script>
+    <script defer src="src/js/authHandler.js"></script>
+
+    <style>
+        /* UI FIXES: Dropdown & HUD */
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: #1e1e1e;
+            min-width: 180px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .user-info {
+            padding: 12px;
+            font-size: 11px;
+            color: #888;
+            border-bottom: 1px solid #333;
+            white-space: nowrap;
+        }
+
+        .logout-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #ff5555;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 85, 85, 0.1);
+        }
+
+        /* Das HUD liegt über ALLEM, lässt aber Klicks durch (pointer-events) */
+        #gameHUD {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            pointer-events: none;
+            display: none;
+        }
+
+        /* Nur echte UI-Elemente im HUD fangen Klicks wieder ein */
+        #gameHUD > * {
+            pointer-events: auto;
+            position: absolute;
+        }
+
+        .save-cloud-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #4CFF00;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #4CFF00;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 10000;
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
 
     <div class="top-nav">
-        <div class="brand">VOXELIO </div>
+        <div class="brand" onclick="window.location.href='dashboard.html'" style="cursor:pointer">
+            <img src="assets/logo.png" alt="Logo" style="width: 22px; height: auto; margin-right: 8px;">
+            VOXELIO
+        </div>
+
         <div class="tab-bar">
             <button id="btn-logic" class="tab-btn active" onclick="switchTab('logic')">Code Editor</button>
             <button id="btn-texture" class="tab-btn" onclick="switchTab('texture')">Texture Painter</button>
         </div>
+
+        <div class="actions">
+            <button onclick="window.location.href='dashboard.html'" class="nav-btn">📂 Projekte</button>
+
+            <span id="currentProjectDisplay" style="color: #4CFF00; margin: 0 10px; font-weight: bold; font-family: monospace;"></span>
+
+            <div class="user-menu">
+                <button id="loginBtn" onclick="AuthHandler.handleUserClick()" class="nav-btn">🔑 Login</button>
+                <div id="userDropdown" class="dropdown-content">
+                    <div id="userEmail" class="user-info">Nicht angemeldet</div>
+                    <button onclick="AuthHandler.logout()" class="logout-btn">🚪 Abmelden</button>
+                </div>
+            </div>
+
+            <button onclick="saveCurrent()" class="nav-btn run-btn">☁️ Cloud Save</button>
+        </div>
+
         <div class="engine-controls">
             <button class="btn run" onclick="App.run()">START</button>
             <button class="btn stop" onclick="App.stop()">STOP</button>
@@ -28,20 +144,20 @@
     </div>
 
     <div id="main-container">
+        <div id="blocklyArea">
+            <div id="blocklyDiv" style="position: absolute;"></div>
+        </div>
 
-        <div id="blocklyArea"></div>
         <div id="textureEditor" style="display: none;">
             <div class="painter-layout">
                 <div class="canvas-card">
                     <canvas id="pixelCanvas" width="512" height="512"></canvas>
-
                     <div class="tex-controls">
                         <div class="tool-group">
                             <button class="btn secondary" onclick="TextureEditor.setMode('paint')">✏️ Stift</button>
                             <button class="btn secondary" onclick="TextureEditor.setMode('erase')">🧽 Radierer</button>
                             <input type="color" id="paintColor" value="#4CFF00">
                         </div>
-
                         <div class="save-group">
                             <input type="text" id="textureName" placeholder="Textur Name...">
                             <button class="btn run" onclick="TextureEditor.save()">Speichern</button>
@@ -57,13 +173,8 @@
 
         <div id="sidePanel">
             <div id="statusTag">System Bereit</div>
-
-            <div id="canvas3d" tabindex="0" style="position: relative;">
-                <div id="gameHUD"
-                    style="position: absolute; top: 10px; left: 10px; color: #4CFF00; font-family: 'Courier New', monospace; pointer-events: none;">
+            <div id="canvas3d" tabindex="0">
                 </div>
-            </div>
-
             <div class="panel-section">
                 <div class="section-header">
                     <span>SCRIPTS</span>
@@ -71,15 +182,17 @@
                 </div>
                 <div id="scriptList" class="scroll-area"></div>
             </div>
-
             <div class="panel-section">
                 <div class="section-header">SCENE EXPLORER</div>
                 <div id="sceneList" class="scroll-area"></div>
             </div>
-
             <div id="log">> Initialisierung abgeschlossen.</div>
         </div>
     </div>
+
+    <div id="gameHUD"></div>
+
+    <div id="save-status-cloud" class="save-cloud-icon">☁️ Autosave...</div>
 
     <div id="nameModal" class="modal">
         <div class="modal-content">
@@ -99,33 +212,19 @@
             <block type="event_key"></block>
             <block type="event_tick"></block>
         </category>
-
         <category name="Formen" colour="#4C97FF">
             <block type="create_shape"></block>
             <block type="set_texture"></block>
+            <block type="create_group"></block>
         </category>
-
         <category name="Bewegung" colour="#5CB1D6">
             <block type="set_position"></block>
             <block type="move_object"></block>
             <block type="set_scale"></block>
-            <block type="set_dimensions">
-                <value name="VALUE">
-                    <block type="math_number">
-                        <field name="NUM">1</field>
-                    </block>
-                </value>
-            </block>
-            <block type="set_rotation">
-                <value name="DEGREE">
-                    <block type="math_number">
-                        <field name="NUM">90</field>
-                    </block>
-                </value>
-            </block>
+            <block type="set_dimensions"></block>
+            <block type="set_rotation"></block>
             <block type="rotate_forever"></block>
         </category>
-
         <category name="Steuerung" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>
@@ -135,64 +234,84 @@
         </category>
         <category name="Logik" colour="#5C81A6">
             <block type="logic_if"></block>
-            <block type="logic_if_else"></block>
             <block type="logic_compare"></block>
             <block type="logic_boolean"></block>
             <block type="is_touching"></block>
-            <block type="check_color"></block>
             <block type="ui_button_pressed"></block>
         </category>
-
-        <category name="Design" colour="#9966FF">
-            <block type="colour_picker_custom"></block>
-            <block type="set_light_intensity"></block>
-        </category>
-
-        <category name="Mathe" colour="#5CB1D6">
-            <block type="math_number"></block>
-        </category>
-
         <category name="UI" colour="#A55B80">
             <block type="create_ui"></block>
-            <block type="remove_ui"></block>
-            <block type="set_ui_parent"></block>
-            <block type="set_ui_text">
-                <value name="TEXT">
-                    <block type="text_join_simple">
-                        <value name="A">
-                            <block type="text">
-                                <field name="TEXT">Wert: </field>
-                            </block>
-                        </value>
-                    </block>
-                </value>
-            </block>
+            <block type="set_ui_text"></block>
         </category>
-        <category name="Misc" colour="#FFAB19">
-            <block type="create_group"></block>
-            <block type="init_var">
-                <value name="VALUE">
-                    <block type="math_number">
-                        <field name="NUM">0</field>
-                    </block>
-                </value>
-            </block>
+        <category name="Variablen" colour="#FFAB19">
+            <block type="init_var"></block>
             <block type="set_var"></block>
-            <block type="change_var">
-                <value name="VALUE">
-                    <block type="math_number">
-                        <field name="NUM">1</field>
-                    </block>
-                </value>
-            </block>
             <block type="get_var"></block>
-            <block type="display_var"></block>
         </category>
     </xml>
 
-    <script src="src/js/engine.js"></script>
-    <script src="src/js/textureEditor.js"></script>
-    <script src="src/js/blocks.js"></script>
+    <script>
+        let activeProjectName = "";
+
+        // Tab Management
+        function switchTab(tab) {
+            const blocklyArea = document.getElementById('blocklyArea');
+            const textureEditor = document.getElementById('textureEditor');
+            const btnLogic = document.getElementById('btn-logic');
+            const btnTex = document.getElementById('btn-texture');
+
+            if (tab === 'logic') {
+                blocklyArea.style.display = 'block';
+                textureEditor.style.display = 'none';
+                btnLogic.classList.add('active');
+                btnTex.classList.remove('active');
+                if (window.workspace) Blockly.svgResize(window.workspace);
+            } else {
+                blocklyArea.style.display = 'none';
+                textureEditor.style.display = 'block';
+                btnLogic.classList.remove('active');
+                btnTex.classList.add('active');
+            }
+        }
+
+        // Project Saving
+        function saveCurrent() {
+            if (activeProjectName) {
+                AuthHandler.saveToCloud(activeProjectName);
+            } else {
+                const name = prompt('Projekt unter diesem Namen speichern:', 'MeinProjekt');
+                if (name) {
+                    activeProjectName = name;
+                    document.getElementById('currentProjectDisplay').innerText = activeProjectName;
+                    AuthHandler.saveToCloud(name);
+                }
+            }
+        }
+
+        // Initialize App on Load
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            activeProjectName = params.get('project');
+            const isNew = params.get('new');
+
+            if (activeProjectName) {
+                document.getElementById('currentProjectDisplay').innerText = "PROJEKT: " + activeProjectName;
+
+                const checkAuth = setInterval(() => {
+                    if (window.AuthHandler && AuthHandler.user) {
+                        clearInterval(checkAuth);
+                        if (isNew) {
+                            Editor.scripts = { "main": {} };
+                            AuthHandler.saveToCloud(activeProjectName, true);
+                            Editor.renderList();
+                        } else {
+                            UI.loadFromCloud(activeProjectName);
+                        }
+                    }
+                }, 500);
+            }
+        });
+    </script>
 
 </body>
 

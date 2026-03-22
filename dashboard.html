@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Voxelio - Dashboard</title>
+    <link rel="stylesheet" href="src/style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4CUiHx0GhixnFp76V5zFR2s49ETOYpwQ",
+            authDomain: "voxelio-f1bf5.firebaseapp.com",
+            projectId: "voxelio-f1bf5",
+            storageBucket: "voxelio-f1bf5.firebasestorage.app",
+            messagingSenderId: "981770039529",
+            appId: "1:981770039529:web:5b93f9c830cd5c30ffc078"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        // Zugriff auf auth und db über das globale firebase Objekt
+    </script>
+
+    <script src="src/js/authHandler.js"></script>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="brand">VOXELIO</div>
+        <div class="actions">
+            <div class="user-menu">
+                <button id="loginBtn" onclick="AuthHandler.handleUserClick()" class="nav-btn">🔑 Login</button>
+                <div id="userDropdown" class="dropdown-content">
+                    <div id="userEmail" class="user-info"></div>
+                    <button onclick="AuthHandler.logout()" class="logout-btn">🚪 Abmelden</button>
+                </div>
+            </div>
+            <button class="nav-btn run-btn" onclick="createNewProject()">+ Neues Projekt</button>
+        </div>
+    </div>
+
+    <div class="dashboard-content">
+        <h2>Deine Cloud-Projekte</h2>
+        <div id="projectGrid" class="project-grid">
+            </div>
+    </div>
+
+    <script>
+        async function createNewProject() {
+            const name = prompt("Name des Projekts:");
+            if (name) {
+                window.location.href = `index.html?project=${encodeURIComponent(name)}&new=true`;
+            }
+        }
+
+        // Listener für das Laden der Projekte
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user) {
+                const grid = document.getElementById('projectGrid');
+                grid.innerHTML = "<p>Lade Projekte...</p>";
+                
+                try {
+                    const snapshot = await firebase.firestore()
+                        .collection("users").doc(user.uid)
+                        .collection("projects").get();
+                    
+                    grid.innerHTML = "";
+                    if (snapshot.empty) {
+                        grid.innerHTML = "<p>Noch keine Projekte vorhanden.</p>";
+                    }
+
+                    snapshot.forEach(doc => {
+                        const div = document.createElement('div');
+                        div.className = 'project-card';
+                        div.innerHTML = `
+                            <h3>${doc.id}</h3>
+                            <button onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>
+                        `;
+                        grid.appendChild(div);
+                    });
+                } catch (e) {
+                    console.error("Fehler beim Laden:", e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
