@@ -61,13 +61,26 @@
             <block type="move_object"></block>
             <block type="set_scale"></block>
             <block type="rotate_forever"></block>
-            
+            <block type="set_dimensions">
+                <value name="VALUE">
+                    <block type="math_number">
+                        <field name="NUM">1</field>
+                    </block>
+                </value>
+            </block>
+            <block type="set_rotation">
+                <value name="DEGREE">
+                    <block type="math_number">
+                        <field name="NUM">90</field>
+                    </block>
+                </value>
+            </block>
         </category>
         <category name="Design" colour="#9966FF">
             <block type="colour_picker_custom"></block>
             <block type="set_light_intensity"></block>
         </category>
-        
+
         <category name="Controller" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>

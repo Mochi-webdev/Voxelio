@@ -8,7 +8,7 @@ window.App = {
     tickListeners: [], // Initialisiere hier
     isRunning: false,
     fpcPlayer: null,
-     solids: [],
+    solids: [],
     mouseDelta: { x: 0, y: 0 },
 
     init() {
@@ -55,7 +55,14 @@ window.App = {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(c.clientWidth, c.clientHeight);
     },
-
+    setRotation(name, axis, degree) {
+        const obj = this.objects[name];
+        if (obj) {
+            // Three.js uses Radians, so we convert the input degrees
+            const radians = THREE.MathUtils.degToRad(parseFloat(degree));
+            obj.rotation[axis] = radians;
+        }
+    },
     spawn(t, c, n, p = "Szene") {
         if (this.objects[n]) this.scene.remove(this.objects[n]);
         let obj;
@@ -210,7 +217,17 @@ window.App = {
             this.fpcPlayer.visible = true;
         }
     },
-   
+    setDimension(name, axis, value) {
+        const obj = this.objects[name];
+        if (obj) {
+            const val = parseFloat(value);
+            // We update the scale on the specific axis
+            obj.scale[axis] = val;
+
+            // Optional: If you use physics or bounding boxes, 
+            // you might need to update them here.
+        }
+    },
 
     setSolid(name, isSolid) {
         const obj = this.objects[name];
@@ -239,9 +256,9 @@ window.App = {
             }
         }
         return false;
-    } ,
+    },
 
-  moveFPC(dir, speed) {
+    moveFPC(dir, speed) {
         if (!this.fpcPlayer) return;
         const s = parseFloat(speed);
         const moveVec = new THREE.Vector3();

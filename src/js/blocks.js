@@ -68,7 +68,40 @@ Blockly.Blocks['set_solid'] = {
     this.setColour(290);
   }
 };
-
+Blockly.Blocks['set_dimensions'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setze")
+        .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
+        .appendField(new Blockly.FieldDropdown([
+            ["Breite (X)", "x"], 
+            ["Höhe (Y)", "y"], 
+            ["Tiefe (Z)", "z"]
+        ]), "AXIS")
+        .appendField("auf");
+    this.appendValueInput("VALUE")
+        .setCheck("Number");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(160);
+  }
+};
+Blockly.Blocks['set_rotation'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setze Rotation von")
+        .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
+        .appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS")
+        .appendField("auf");
+    this.appendValueInput("DEGREE")
+        .setCheck("Number");
+    this.appendDummyInput()
+        .appendField("Grad");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(160);
+  }
+};
 
 const isConnected = (b) => { 
     let r = b.getRootBlock(); 
@@ -115,8 +148,19 @@ javascriptGenerator.forBlock['set_solid'] = (b) => {
   const isSolid = b.getFieldValue('SOLID') === 'TRUE';
   return `App.setSolid('${name}', ${isSolid});\n`;
 };
-
-
+javascriptGenerator.forBlock['set_dimensions'] = wrap((b, g) => {
+  const name = b.getFieldValue('NAME');
+  const axis = b.getFieldValue('AXIS');
+  const val = g.valueToCode(b, 'VALUE', 0) || "1";
+  return `App.setDimension('${name}', '${axis}', ${val});\n`;
+});
+javascriptGenerator.forBlock['set_rotation'] = wrap((b, g) => {
+  const name = b.getFieldValue('NAME');
+  const axis = b.getFieldValue('AXIS');
+  const degree = g.valueToCode(b, 'DEGREE', 0) || "0";
+  // Convert Degrees to Radians: (degree * Math.PI / 180)
+  return `App.setRotation('${name}', '${axis}', ${degree});\n`;
+});
 
 
 
