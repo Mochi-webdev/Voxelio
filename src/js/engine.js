@@ -8,6 +8,7 @@ window.App = {
     tickListeners: [], // Initialisiere hier
     isRunning: false,
     fpcPlayer: null,
+     solids: [],
     mouseDelta: { x: 0, y: 0 },
 
     init() {
@@ -141,18 +142,6 @@ window.App = {
         this.mouseDelta = { x: 0, y: 0 };
     },
 
-    moveFPC(dir, speed) {
-        if (!this.fpcPlayer) return;
-        const vector = new THREE.Vector3();
-        const s = parseFloat(speed);
-        if (dir === 'forward') vector.z -= s;
-        if (dir === 'backward') vector.z += s;
-        if (dir === 'left') vector.x -= s;
-        if (dir === 'right') vector.x += s;
-
-        vector.applyQuaternion(this.fpcPlayer.quaternion);
-        this.fpcPlayer.position.add(vector);
-    },
 
     run() {
         this.stop();
@@ -163,6 +152,7 @@ window.App = {
 
     stop() {
         this.isRunning = false;
+        this.solids = [];
         document.body.classList.remove('running');
 
         // Kamera vom Spieler lösen und zurück in die Welt-Szene
@@ -219,7 +209,62 @@ window.App = {
 
             this.fpcPlayer.visible = true;
         }
-    }
+    },
+   
+
+    setSolid(name, isSolid) {
+        const obj = this.objects[name];
+        if (!obj) return;
+
+        if (isSolid) {
+            if (!this.solids.includes(obj)) this.solids.push(obj);
+        } else {
+            this.solids = this.solids.filter(s => s !== obj);
+        }
+    },
+    checkCollision(currentPos, direction, distance) {
+        if (this.solids.length === 0) return false;
+
+        // Create a Raycaster starting at the player's position
+        // pointing in the direction they want to move
+        const raycaster = new THREE.Raycaster(currentPos, direction.clone().normalize());
+
+        // Check if the ray hits any of our solid objects
+        const intersections = raycaster.intersectObjects(this.solids);
+
+        if (intersections.length > 0) {
+            // If the closest hit is nearer than our movement distance, we hit a wall!
+            if (intersections[0].distance < distance + 0.5) { // 0.5 is a small "buffer"
+                return true;
+            }
+        }
+        return false;
+    } ,
+
+  moveFPC(dir, speed) {
+        if (!this.fpcPlayer) return;
+        const s = parseFloat(speed);
+        const moveVec = new THREE.Vector3();
+
+        if (dir === 'forward') moveVec.z -= s;
+        if (dir === 'backward') moveVec.z += s;
+        if (dir === 'left') moveVec.x -= s;
+        if (dir === 'right') moveVec.x += s;
+
+        // Turn the local movement into World Space based on player rotation
+        moveVec.applyQuaternion(this.fpcPlayer.quaternion);
+
+        // COLLISION CHECK
+        const isWallInWay = this.checkCollision(
+            this.fpcPlayer.position,
+            moveVec,
+            s
+        );
+
+        if (!isWallInWay) {
+            this.fpcPlayer.position.add(moveVec);
+        }
+    },
 };
 
 window.addEventListener('load', () => App.init());

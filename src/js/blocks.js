@@ -41,7 +41,7 @@ Blockly.Blocks['fpc_move'] = {
 };
 Blockly.Blocks['event_tick'] = {
   init: function() {
-    this.appendDummyInput().appendField("Dauerhaft (Jeden Frame)");
+    this.appendDummyInput().appendField("Per Tick");
     this.setNextStatement(true);
     this.setColour(60);
   }
@@ -51,6 +51,18 @@ Blockly.Blocks['set_view_mode'] = {
     this.appendDummyInput()
         .appendField("Sichtmodus auf")
         .appendField(new Blockly.FieldDropdown([["First Person", "fp"], ["Third Person", "tp"]]), "MODE");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
+  }
+};
+Blockly.Blocks['set_solid'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setze")
+        .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
+        .appendField("als Festes Objekt:")
+        .appendField(new Blockly.FieldCheckbox("TRUE"), "SOLID");
     this.setPreviousStatement(true);
     this.setNextStatement(true);
     this.setColour(290);
@@ -97,6 +109,11 @@ javascriptGenerator.forBlock['event_tick'] = (b, g) => {
 
 javascriptGenerator.forBlock['set_view_mode'] = (b) => {
   return `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
+};
+javascriptGenerator.forBlock['set_solid'] = (b) => {
+  const name = b.getFieldValue('NAME');
+  const isSolid = b.getFieldValue('SOLID') === 'TRUE';
+  return `App.setSolid('${name}', ${isSolid});\n`;
 };
 
 
