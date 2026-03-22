@@ -115,6 +115,7 @@ Blockly.Blocks['set_texture'] = {
     this.setColour(160);
   },
   
+  
   // Diese Funktion wird jedes Mal aufgerufen, wenn man das Dropdown öffnet
   getOptions: function() {
     let options = [];
@@ -130,6 +131,186 @@ Blockly.Blocks['set_texture'] = {
     return options;
   }
 };
+Blockly.Blocks['logic_if'] = {
+  init: function() {
+    this.appendValueInput("CONDITION")
+        .setCheck("Boolean")
+        .appendField("wenn");
+    this.appendStatementInput("DO")
+        .appendField("mache");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(210);
+  }
+};
+
+// IF / ELSE
+Blockly.Blocks['logic_if_else'] = {
+  init: function() {
+    this.appendValueInput("CONDITION")
+        .setCheck("Boolean")
+        .appendField("wenn");
+    this.appendStatementInput("DO")
+        .appendField("mache");
+    this.appendStatementInput("ELSE")
+        .appendField("ansonsten");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(210);
+  }
+};
+Blockly.Blocks['logic_compare'] = {
+  init: function() {
+    this.appendValueInput("A");
+    this.appendDummyInput()
+        .appendField(new Blockly.FieldDropdown([["=", "EQ"], ["<", "LT"], [">", "GT"], ["≠", "NEQ"]]), "OP");
+    this.appendValueInput("B");
+    this.setInputsInline(true);
+    this.setOutput(true, "Boolean");
+    this.setColour(210);
+  }
+};
+// Variable setzen
+Blockly.Blocks['set_var'] = {
+  init: function() {
+    this.appendValueInput("VALUE").appendField("Setze Variable").appendField(new Blockly.FieldTextInput("meineZahl"), "VAR").appendField("auf");
+    this.setPreviousStatement(true); this.setNextStatement(true);
+    this.setColour(330);
+  }
+};
+
+// Variable abrufen
+Blockly.Blocks['get_var'] = {
+  init: function() {
+    this.appendDummyInput().appendField("Variable").appendField(new Blockly.FieldTextInput("meineZahl"), "VAR");
+    this.setOutput(true, null);
+    this.setColour(330);
+  }
+};
+
+// Kollisions-Abfrage (Boolean)
+Blockly.Blocks['is_touching'] = {
+  init: function() {
+    this.appendDummyInput().appendField("Objekt").appendField(new Blockly.FieldTextInput("obj1"), "A").appendField("berührt").appendField(new Blockly.FieldTextInput("obj2"), "B");
+    this.setOutput(true, "Boolean");
+    this.setColour(210);
+  }
+};
+
+// Farb-Abfrage
+Blockly.Blocks['check_color'] = {
+  init: function() {
+    this.appendDummyInput().appendField("Farbe von").appendField(new Blockly.FieldTextInput("obj1"), "NAME");
+    this.setOutput(true, "Colour");
+    this.setColour(210);
+  }
+};
+// Block: Variable auf dem Bildschirm anzeigen
+Blockly.Blocks['display_var'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Zeige Variable")
+        .appendField(new Blockly.FieldTextInput("punkte"), "VAR")
+        .appendField("mit Text")
+        .appendField(new Blockly.FieldTextInput("Score"), "LABEL");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(330);
+  }
+};
+
+// Block: Variable erstellen / initialisieren
+Blockly.Blocks['init_var'] = {
+  init: function() {
+    this.appendValueInput("VALUE")
+        .appendField("Erstelle Variable")
+        .appendField(new Blockly.FieldTextInput("name"), "VAR")
+        .appendField("Startwert");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(330);
+  }
+};
+Blockly.Blocks['change_var'] = {
+  init: function() {
+    this.appendValueInput("VALUE")
+        .appendField("Ändere Variable")
+        .appendField(new Blockly.FieldTextInput("punkte"), "VAR")
+        .appendField("um");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(330);
+  }
+};
+
+// UI Element erstellen (Button/Frame/Scroll)
+Blockly.Blocks['create_ui'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Erstelle UI")
+        .appendField(new Blockly.FieldDropdown([["Button", "button"], ["Frame", "frame"], ["Scrolling Frame", "scrolling_frame"]]), "TYPE")
+        .appendField("ID")
+        .appendField(new Blockly.FieldTextInput("meinUI"), "ID");
+    this.appendDummyInput()
+        .appendField("Position X")
+        .appendField(new Blockly.FieldNumber(0), "X")
+        .appendField("Y")
+        .appendField(new Blockly.FieldNumber(0), "Y");
+    this.appendDummyInput()
+        .appendField("Breite")
+        .appendField(new Blockly.FieldNumber(100), "W")
+        .appendField("Höhe")
+        .appendField(new Blockly.FieldNumber(50), "H");
+    this.appendDummyInput()
+        .appendField("Text")
+        .appendField(new Blockly.FieldTextInput("Klick mich"), "TEXT")
+        .appendField("Textur")
+        .appendField(new Blockly.FieldDropdown(() => this.getTexOptions()), "TEX");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(260);
+  },
+  getTexOptions: function() {
+    let options = [["Keine", "none"]];
+    Object.keys(App.textures).forEach(n => options.push([n, n]));
+    return options;
+  }
+};
+
+// Abfrage: Button geklickt?
+Blockly.Blocks['ui_button_pressed'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Button")
+        .appendField(new Blockly.FieldTextInput("meinUI"), "ID")
+        .appendField("gedrückt?");
+    this.setOutput(true, "Boolean");
+    this.setColour(210);
+  }
+};
+Blockly.Blocks['set_ui_parent'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setze UI")
+        .appendField(new Blockly.FieldTextInput("kindID"), "CHILD")
+        .appendField("in Frame")
+        .appendField(new Blockly.FieldTextInput("parentID"), "PARENT");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(260);
+  }
+};
+Blockly.Blocks['remove_ui'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Lösche UI Element mit ID")
+        .appendField(new Blockly.FieldTextInput("meinUI"), "ID");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(260);
+  }
+};
+
 
 const isConnected = (b) => { 
     let r = b.getRootBlock(); 
@@ -194,6 +375,93 @@ javascriptGenerator.forBlock['set_texture'] = wrap((b) => {
   if (tex === "none") return "";
   return `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`;
 });
+javascriptGenerator.forBlock['logic_if'] = function(block, generator) {
+  const condition = generator.valueToCode(block, 'CONDITION', 0) || 'false';
+  const branch = generator.statementToCode(block, 'DO');
+  return `if (${condition}) {\n${branch}}\n`;
+};
+
+javascriptGenerator.forBlock['logic_if_else'] = function(block, generator) {
+  const condition = generator.valueToCode(block, 'CONDITION', 0) || 'false';
+  const branchDo = generator.statementToCode(block, 'DO');
+  const branchElse = generator.statementToCode(block, 'ELSE');
+  return `if (${condition}) {\n${branchDo}} else {\n${branchElse}}\n`;
+};
+
+javascriptGenerator.forBlock['logic_compare'] = function(block, generator) {
+  const a = generator.valueToCode(block, 'A', 0) || '0';
+  const b = generator.valueToCode(block, 'B', 0) || '0';
+  const opMap = { 'EQ': '===', 'NEQ': '!==', 'LT': '<', 'GT': '>' };
+  const op = opMap[block.getFieldValue('OP')];
+  return [`(${a} ${op} ${b})`, 0];
+};
+javascriptGenerator.forBlock['set_var'] = (b, g) => {
+  const val = g.valueToCode(b, 'VALUE', 0) || '0';
+  return `App.setVariable('${b.getFieldValue('VAR')}', ${val});\n`;
+};
+
+javascriptGenerator.forBlock['get_var'] = (b) => {
+  return [`App.getVariable('${b.getFieldValue('VAR')}')`, 0];
+};
+
+javascriptGenerator.forBlock['is_touching'] = (b) => {
+  return [`App.checkCollisionBetween('${b.getFieldValue('A')}', '${b.getFieldValue('B')}')`, 0];
+};
+
+javascriptGenerator.forBlock['check_color'] = (b) => {
+  return [`App.getObjectColor('${b.getFieldValue('NAME')}')`, 0];
+};
+javascriptGenerator.forBlock['display_var'] = function(block) {
+  const varName = block.getFieldValue('VAR');
+  const label = block.getFieldValue('LABEL');
+  // Wir rufen das im Tick oder nach Änderung auf
+  return `App.displayVariable('${varName}', '${label}');\n`;
+};
+
+javascriptGenerator.forBlock['init_var'] = function(block, generator) {
+  const varName = block.getFieldValue('VAR');
+  const val = generator.valueToCode(block, 'VALUE', 0) || '0';
+  return `App.setVariable('${varName}', ${val});\n`;
+};
+javascriptGenerator.forBlock['change_var'] = function(block, generator) {
+  const varName = block.getFieldValue('VAR');
+  const changeValue = generator.valueToCode(block, 'VALUE', 0) || '0';
+  
+  // Wir holen den aktuellen Wert, addieren die Änderung und setzen ihn neu
+  return `App.setVariable('${varName}', App.getVariable('${varName}') + ${changeValue});\n`;
+};
+javascriptGenerator.forBlock['create_ui'] = function(block) {
+  
+  const type = block.getFieldValue('TYPE');
+  const id = block.getFieldValue('ID');
+  const x = block.getFieldValue('X');
+  const y = block.getFieldValue('Y');
+  const w = block.getFieldValue('W');
+  const h = block.getFieldValue('H');
+  const text = block.getFieldValue('TEXT');
+  const tex = block.getFieldValue('TEX');
+  const texVal = (tex === 'none' || !tex) ? "" : tex;
+  
+  // Wenn du noch kein Feld für Parent im Block hast, übergeben wir 'null'
+  return `App.createUI('${type}', '${id}', ${x}, ${y}, ${w}, ${h}, '${text}', '${texVal}', null);\n`;
+};
+
+javascriptGenerator.forBlock['ui_button_pressed'] = function(block) {
+  const id = block.getFieldValue('ID');
+  return [`App.isButtonClicked('${id}')`, 0];
+};
+javascriptGenerator.forBlock['set_ui_parent'] = function(block) {
+  const child = block.getFieldValue('CHILD');
+  const parent = block.getFieldValue('PARENT');
+  return `if(App.uiElements['${parent}']) App.uiElements['${parent}'].appendChild(App.uiElements['${child}']);\n`;
+};
+javascriptGenerator.forBlock['remove_ui'] = function(block) {
+  const id = block.getFieldValue('ID');
+  return `App.removeUI('${id}');\n`;
+};
+
+
+
 
 window.Editor = {
     scripts: { "Main": null },

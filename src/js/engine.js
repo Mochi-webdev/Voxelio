@@ -151,12 +151,24 @@ window.App = {
 
 
     run() {
-        this.stop();
+        this.stop(); // Erst alles sauber löschen
         this.isRunning = true;
         document.body.classList.add('running');
-        try { eval(Editor.getAllCode()); } catch (e) { console.error(e); }
+        try {
+            eval(Editor.getAllCode());
+        } catch (e) {
+            console.error("Fehler im Code:", e);
+            this.stop(); // Bei Fehler sofort stoppen
+        }
     },
-
+    removeUI(id) {
+        if (this.uiElements[id]) {
+            this.uiElements[id].remove();
+            delete this.uiElements[id];
+            // Auch die Klick-Variable löschen, damit sie beim nächsten Mal sauber ist
+            delete this.variables[`btn_${id}_clicked`];
+        }
+    },
     stop() {
         this.isRunning = false;
         this.solids = [];
@@ -282,7 +294,65 @@ window.App = {
             this.fpcPlayer.position.add(moveVec);
         }
     },
+    // In window.App einfügen:
+    variableDisplays: {}, // Speichert, welche Variablen gerade angezeigt werden
 
+    displayVariable(name, label) {
+        let hud = document.getElementById('gameHUD');
+        if (!this.variableDisplays[name]) {
+            let el = document.createElement('div');
+            el.id = "hud-" + name;
+            hud.appendChild(el);
+            this.variableDisplays[name] = el;
+        }
+        // Update den Text: "Punkte: 10"
+        this.variableDisplays[name].innerText = `${label}: ${this.getVariable(name)}`;
+    },
+
+    stop() {
+        this.isRunning = false;
+        document.body.classList.remove('running');
+
+        // 1. UI komplett abräumen
+        Object.keys(this.uiElements).forEach(id => {
+            if (this.uiElements[id]) this.uiElements[id].remove();
+        });
+        this.uiElements = {};
+
+        // 2. HUD (Variablen-Anzeige) leeren
+        const hud = document.getElementById('gameHUD');
+        if (hud) hud.innerHTML = "";
+        this.variableDisplays = {};
+
+        // 3. Kamera zurücksetzen und vom Spieler lösen
+        if (this.camera) {
+            this.scene.attach(this.camera);
+            this.camera.position.set(8, 8, 8);
+            this.camera.lookAt(0, 0, 0);
+        }
+
+        if (this.fpcPlayer) this.fpcPlayer.visible = true;
+
+        // 4. Alle 3D-Objekte aus der Szene löschen
+        Object.values(this.objects).forEach(o => this.scene.remove(o));
+
+        // 5. Alle Listen und States resetten
+        this.objects = {};
+        this.solids = [];
+        this.keyListeners = {};
+        this.tickListeners = [];
+        this.variables = {}; // Wichtig: Alle Punkte/Logik auf 0
+        this.fpcPlayer = null;
+
+        // 6. Steuerung und Maus-Lock freigeben
+        if (this.controls) this.controls.enabled = true;
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+
+        this.updateExplorer();
+        console.log("> System gestoppt und bereinigt.");
+    },
 
     applyTexture(objName, texName) {
         const obj = this.objects[objName];
@@ -298,11 +368,128 @@ window.App = {
             });
         }
     },
-    
+
+
+
+    // In window.App einfügen:
+    variables: {},
+
+    getVariable(name) { return this.variables[name] || 0; },
+    setVariable(name, val) { this.variables[name] = val; },
+
+    checkCollisionBetween(name1, name2) {
+        const obj1 = this.objects[name1];
+        const obj2 = this.objects[name2];
+        if (!obj1 || !obj2) return false;
+
+        // Einfache Box-Kollision (AABB)
+        const box1 = new THREE.Box3().setFromObject(obj1);
+        const box2 = new THREE.Box3().setFromObject(obj2);
+        return box1.intersectsBox(box2);
+    },
+
+    getObjectColor(name) {
+        const obj = this.objects[name];
+        if (obj && obj.material) {
+            return "#" + obj.material.color.getHexString();
+        }
+        return "#ffffff";
+    },
+
+    // In window.App einfügen:
+    uiElements: {},
+
+    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+        // 1. Altes Element mit derselben ID entfernen, um Duplikate zu vermeiden
+        if (this.uiElements[id]) {
+            this.uiElements[id].remove();
+        }
+
+        // 2. Element-Typ erstellen
+        const el = document.createElement(type === 'button' ? 'button' : 'div');
+        el.id = "ui-" + id;
+
+        // 3. Grundstyling
+        el.style.position = "absolute";
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = w + "px";
+        el.style.height = h + "px";
+        el.style.zIndex = "100";
+        el.style.border = "none";
+        el.style.boxSizing = "border-box";
+        el.style.display = "flex";
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+        el.style.fontFamily = "sans-serif";
+
+        // 4. Spezifische Logik für Typen
+        if (type === 'button') {
+            el.innerText = text;
+            el.style.cursor = "pointer";
+            // Klick-Event speichert den Status in unseren Engine-Variablen
+            el.onclick = () => {
+                this.setVariable(`btn_${id}_clicked`, true);
+            };
+        }
+
+        if (type === 'scrolling_frame') {
+            el.style.overflowY = "auto";
+            el.style.overflowX = "hidden";
+            el.style.display = "block"; // Block für Scrolling wichtig
+        }
+
+        // 5. Textur oder Hintergrundfarbe anwenden
+        if (texture && texture !== "none" && this.textures[texture]) {
+            el.style.backgroundImage = `url(${this.textures[texture]})`;
+            el.style.backgroundSize = "100% 100%";
+            el.style.backgroundRepeat = "no-repeat";
+            el.style.backgroundColor = "transparent";
+        } else {
+            // Standard-Farben, wenn keine Textur vorhanden ist
+            if (type === 'button') {
+                el.style.backgroundColor = "#444";
+                el.style.color = "white";
+            } else {
+                el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                el.style.border = "1px solid #555";
+            }
+        }
+
+        // 6. Parenting (Verschachtelung)
+        // Standardmäßig ist das Ziel unser 3D-Canvas Container
+        let targetContainer = document.getElementById('canvas3d');
+
+        // Falls eine parentId angegeben wurde und dieses Element existiert:
+        if (parentId && this.uiElements[parentId]) {
+            targetContainer = this.uiElements[parentId];
+            // Wenn es in einem Frame ist, positionieren wir es oft relativ (optional)
+            // el.style.position = "relative"; 
+        }
+
+        // 7. Ans UI-System anhängen
+        if (targetContainer) {
+            targetContainer.appendChild(el);
+            this.uiElements[id] = el;
+        } else {
+            console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
+        }
+    },
+
+    isButtonClicked(id) {
+        const varName = `btn_${id}_clicked`;
+        const clicked = this.getVariable(varName);
+
+        if (clicked === true) {
+            this.setVariable(varName, false); // Sofort zurücksetzen (Toggle-Schutz)
+            return true;
+        }
+        return false;
+    },
 };
 
 window.addEventListener('load', () => App.init());
-window.switchTab = function(tab) {
+window.switchTab = function (tab) {
     const logic = document.getElementById('blocklyArea');
     const texture = document.getElementById('textureEditor');
     const btnLogic = document.getElementById('btn-logic');
@@ -321,6 +508,6 @@ window.switchTab = function(tab) {
         btnLogic.classList.remove('active');
         btnTexture.classList.add('active');
         // Initialisiere den Painter, falls noch nicht geschehen
-        if(!TextureEditor.initialized) TextureEditor.init();
+        if (!TextureEditor.initialized) TextureEditor.init();
     }
 };
