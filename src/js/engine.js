@@ -1,72 +1,89 @@
-const javascriptGenerator = Blockly.JavaScript;
-
-Blockly.Blocks['event_flag'] = { init: function() { this.appendDummyInput().appendField("Wenn 🚩 angeklickt"); this.setNextStatement(true); this.setColour(60); } };
-Blockly.Blocks['event_key'] = { init: function() { this.appendDummyInput().appendField("Wenn Taste").appendField(new Blockly.FieldDropdown([["w","w"],["a","a"],["s","s"],["d","d"],["Leertaste"," "],["Pfeil Oben","ArrowUp"],["Pfeil Unten","ArrowDown"]]), "KEY").appendField("gedrückt wird"); this.setNextStatement(true); this.setColour(60); } };
-Blockly.Blocks['create_group'] = { init: function() { this.appendDummyInput().appendField("Gruppe:").appendField(new Blockly.FieldTextInput("ordner1"), "NAME"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(260); } };
-Blockly.Blocks['create_shape'] = { init: function() { this.appendDummyInput().appendField("Erstelle").appendField(new Blockly.FieldDropdown([["Würfel","box"],["Kugel","sphere"],["Torus","torus"],["Zylinder","cylinder"]]), "TYPE").appendField("Name:").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("in:").appendField(new Blockly.FieldTextInput("Szene"), "PARENT"); this.appendValueInput("COL").setCheck("Colour").appendField("Farbe:"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
-Blockly.Blocks['set_position'] = { init: function() { this.appendDummyInput().appendField("Setze").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X","x"],["Y","y"],["Z","z"]]), "AXIS").appendField("auf"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['move_object'] = { init: function() { this.appendDummyInput().appendField("Bewege").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X","x"],["Y","y"],["Z","z"]]), "AXIS").appendField("um"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['set_scale'] = { init: function() { this.appendDummyInput().appendField("Größe von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("auf:"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['rotate_forever'] = { init: function() { this.appendDummyInput().appendField("Drehe").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("fortlaufend Achse:").appendField(new Blockly.FieldDropdown([["X","x"],["Y","y"],["Z","z"]]), "AXIS"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['colour_picker_custom'] = { init: function() { this.appendDummyInput().appendField(new Blockly.FieldDropdown([["Rot","#ff0000"],["Grün","#00ff00"],["Blau","#0000ff"],["Gelb","#ffff00"],["Weiß","#ffffff"]]), "COL"); this.setOutput(true, "Colour"); this.setColour(20); } };
-
-const isConnected = (b) => { let r = b.getRootBlock(); return r.type === 'event_flag' || r.type === 'event_key'; };
-const wrap = (fn) => function(b, g) { if (!isConnected(b)) return ""; return fn(b, g); };
-
-javascriptGenerator.forBlock['event_flag'] = (b, g) => { let n = b.getNextBlock(); return n ? g.blockToCode(n) : ""; };
-javascriptGenerator.forBlock['event_key'] = (b, g) => { let k = b.getFieldValue('KEY'), n = b.getNextBlock(); return `App.registerKeyEvent('${k}', () => {\n${n ? g.blockToCode(n) : ""}});\n`; };
-javascriptGenerator.forBlock['create_group'] = wrap(b => `App.spawn('group', '#ffffff', '${b.getFieldValue('NAME')}');\n`);
-javascriptGenerator.forBlock['create_shape'] = wrap((b, g) => `App.spawn('${b.getFieldValue('TYPE')}', ${g.valueToCode(b, 'COL', 0) || "'#ffffff'"}, '${b.getFieldValue('NAME')}', '${b.getFieldValue('PARENT')}');\n`);
-javascriptGenerator.forBlock['set_position'] = wrap((b, g) => `App.transform('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', 0) || 0});\n`);
-javascriptGenerator.forBlock['move_object'] = wrap((b, g) => `App.move('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', 0) || 0});\n`);
-javascriptGenerator.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', 0) || 1});\n`);
-javascriptGenerator.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
-javascriptGenerator.forBlock['colour_picker_custom'] = (b, g) => [g.quote_(b.getFieldValue('COL')), 0];
-
-window.Editor = {
-    scripts: { "Main": null },
-    currentScript: "Main",
+window.App = {
+    scene: null, camera: null, renderer: null, controls: null,
+    objects: {}, keyListeners: {}, isRunning: false,
     init() {
-        window.workspace = Blockly.inject('blocklyArea', { toolbox: document.getElementById('toolbox'), grid: {spacing: 25, length: 3, colour: '#222', snap: true} });
-        this.renderList();
-        this.initResizer();
-    },
-    showModal() { document.getElementById('nameModal').style.display = 'flex'; document.getElementById('scriptNameInput').focus(); },
-    hideModal() { document.getElementById('nameModal').style.display = 'none'; document.getElementById('scriptNameInput').value = ''; },
-    createScript() {
-        let n = document.getElementById('scriptNameInput').value.trim();
-        if (n && !this.scripts[n]) { this.scripts[n] = null; this.hideModal(); this.switchScript(n); }
-    },
-    switchScript(n) {
-        this.scripts[this.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
-        this.currentScript = n;
-        window.workspace.clear();
-        if (this.scripts[n]) Blockly.serialization.workspaces.load(this.scripts[n], window.workspace);
-        this.renderList();
-    },
-    renderList() {
-        let c = document.getElementById('scriptList');
-        c.innerHTML = '';
-        Object.keys(this.scripts).forEach(s => {
-            let d = document.createElement('div');
-            d.className = `script-item ${s === this.currentScript ? 'active' : ''}`;
-            d.innerHTML = `📄 ${s}`;
-            d.onclick = () => this.switchScript(s);
-            c.appendChild(d);
+        let c = document.getElementById('canvas3d');
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, c.clientWidth / c.clientHeight, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(c.clientWidth, c.clientHeight);
+        c.appendChild(this.renderer.domElement);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        let l = new THREE.DirectionalLight(0xffffff, 0.5); l.position.set(5, 10, 7);
+        this.scene.add(l);
+        this.scene.background = new THREE.Color(0x0b0b0e);
+        this.scene.add(new THREE.GridHelper(30, 30, 0x222222, 0x333333));
+        this.camera.position.set(8, 8, 8);
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        window.addEventListener('keydown', (e) => {
+            if (!this.isRunning) return;
+            let k = e.key === " " ? " " : e.key;
+            let f = this.keyListeners[k.toLowerCase()] || this.keyListeners[k];
+            if(f) f();
         });
+        this.animate();
     },
-    initResizer() {
-        let r = document.getElementById('resizer'), s = document.getElementById('sidePanel'), active = false;
-        r.onmousedown = () => active = true;
-        window.onmousemove = (e) => { if (active) { let w = window.innerWidth - e.clientX; if (w > 200 && w < 800) { s.style.width = w + 'px'; Blockly.svgResize(window.workspace); App.onResize(); } } };
-        window.onmouseup = () => active = false;
+    onResize() {
+        let c = document.getElementById('canvas3d');
+        this.camera.aspect = c.clientWidth / c.clientHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(c.clientWidth, c.clientHeight);
     },
-    getAllCode() {
-        this.scripts[this.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
-        let code = "", t = new Blockly.Workspace();
-        Object.values(this.scripts).forEach(d => { if(d) { Blockly.serialization.workspaces.load(d, t); code += javascriptGenerator.workspaceToCode(t) + "\n"; t.clear(); } });
-        t.dispose();
-        return code;
+    spawn(t, c, n, p = "Szene") {
+        if (this.objects[n]) this.scene.remove(this.objects[n]);
+        let obj;
+        if (t === 'group') obj = new THREE.Group();
+        else {
+            let g;
+            switch(t) {
+                case 'sphere': g = new THREE.SphereGeometry(1, 32, 16); break;
+                case 'torus': g = new THREE.TorusGeometry(1, 0.3, 12, 48); break;
+                case 'cylinder': g = new THREE.CylinderGeometry(1, 1, 2, 32); break;
+                default: g = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            }
+            obj = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: c }));
+        }
+        obj.name = n; obj.userData = { animations: [] };
+        if (p !== "Szene" && this.objects[p]) this.objects[p].add(obj); else this.scene.add(obj);
+        this.objects[n] = obj;
+        this.updateExplorer();
+    },
+    registerKeyEvent(k, f) { this.keyListeners[k.toLowerCase()] = f; },
+    move(n, a, v) { if (this.objects[n]) this.objects[n].position[a] += parseFloat(v); },
+    transform(n, a, v) { if (this.objects[n]) this.objects[n].position[a] = parseFloat(v); },
+    setScale(n, v) { if (this.objects[n]) this.objects[n].scale.set(v, v, v); },
+    addRotation(n, a, s) { if (this.objects[n]) this.objects[n].userData.animations.push(() => this.objects[n].rotation[a] += s); },
+    updateExplorer() {
+        let l = document.getElementById('sceneList'); l.innerHTML = '';
+        const build = (parent, container, depth) => {
+            parent.children.forEach(c => {
+                if(this.objects[c.name]) {
+                    let i = document.createElement('div'); i.className = 'explorer-item';
+                    i.style.paddingLeft = (depth * 20) + "px";
+                    i.innerHTML = `${c instanceof THREE.Group ? '📁' : '📦'} ${c.name}`;
+                    container.appendChild(i);
+                    build(c, container, depth + 1);
+                }
+            });
+        };
+        build(this.scene, l, 0);
+    },
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        Object.values(this.objects).forEach(o => o.userData.animations.forEach(f => f()));
+        if(this.controls) this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    },
+    run() {
+        this.stop(); this.isRunning = true;
+        document.body.classList.add('running');
+        try { eval(Editor.getAllCode()); } catch(e) { console.error(e); }
+    },
+    stop() {
+        this.isRunning = false;
+        document.body.classList.remove('running');
+        Object.values(this.objects).forEach(o => this.scene.remove(o));
+        this.objects = {}; this.keyListeners = {}; this.updateExplorer();
     }
 };
-window.onload = () => Editor.init();
+window.addEventListener('load', () => App.init());
