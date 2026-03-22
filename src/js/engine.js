@@ -10,7 +10,7 @@ window.App = {
     fpcPlayer: null,
     solids: [],
     mouseDelta: { x: 0, y: 0 },
-
+    textures: {},
     init() {
         let c = document.getElementById('canvas3d');
         this.scene = new THREE.Scene();
@@ -282,6 +282,45 @@ window.App = {
             this.fpcPlayer.position.add(moveVec);
         }
     },
+
+
+    applyTexture(objName, texName) {
+        const obj = this.objects[objName];
+        const texData = this.textures[texName];
+        if (obj && texData) {
+            const loader = new THREE.TextureLoader();
+            loader.load(texData, (texture) => {
+                // Voxel-Look: Kein Verschwimmen beim Skalieren
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                obj.material.map = texture;
+                obj.material.needsUpdate = true;
+            });
+        }
+    },
+    
 };
 
 window.addEventListener('load', () => App.init());
+window.switchTab = function(tab) {
+    const logic = document.getElementById('blocklyArea');
+    const texture = document.getElementById('textureEditor');
+    const btnLogic = document.getElementById('btn-logic');
+    const btnTexture = document.getElementById('btn-texture');
+
+    if (tab === 'logic') {
+        logic.style.display = 'block';
+        texture.style.display = 'none';
+        btnLogic.classList.add('active');
+        btnTexture.classList.remove('active');
+        // Blockly sagen, dass es sich neu berechnen muss
+        Blockly.svgResize(window.workspace);
+    } else {
+        logic.style.display = 'none';
+        texture.style.display = 'flex';
+        btnLogic.classList.remove('active');
+        btnTexture.classList.add('active');
+        // Initialisiere den Painter, falls noch nicht geschehen
+        if(!TextureEditor.initialized) TextureEditor.init();
+    }
+};

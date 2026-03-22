@@ -102,6 +102,34 @@ Blockly.Blocks['set_rotation'] = {
     this.setColour(160);
   }
 };
+Blockly.Blocks['set_texture'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setze Textur von")
+        .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
+        .appendField("auf")
+        // Hier kommt das dynamische Dropdown
+        .appendField(new Blockly.FieldDropdown(() => this.getOptions()), "TEX");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(160);
+  },
+  
+  // Diese Funktion wird jedes Mal aufgerufen, wenn man das Dropdown öffnet
+  getOptions: function() {
+    let options = [];
+    const savedTextures = Object.keys(App.textures);
+    
+    if (savedTextures.length > 0) {
+        savedTextures.forEach(name => {
+            options.push([name, name]);
+        });
+    } else {
+        options.push(["(Keine Texturen)", "none"]);
+    }
+    return options;
+  }
+};
 
 const isConnected = (b) => { 
     let r = b.getRootBlock(); 
@@ -161,8 +189,11 @@ javascriptGenerator.forBlock['set_rotation'] = wrap((b, g) => {
   // Convert Degrees to Radians: (degree * Math.PI / 180)
   return `App.setRotation('${name}', '${axis}', ${degree});\n`;
 });
-
-
+javascriptGenerator.forBlock['set_texture'] = wrap((b) => {
+  const tex = b.getFieldValue('TEX');
+  if (tex === "none") return "";
+  return `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`;
+});
 
 window.Editor = {
     scripts: { "Main": null },

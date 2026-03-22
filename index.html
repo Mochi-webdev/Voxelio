@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voxelio</title>
     <link rel="stylesheet" href="src/style.css">
+
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -13,31 +14,73 @@
 </head>
 
 <body>
-    <div id="blocklyArea"></div>
-    <div id="resizer"></div>
-    <div id="sidePanel">
-        <div id="statusTag">Bereit</div>
-        <div class="toolbar">
+
+    <div class="top-nav">
+        <div class="brand">VOXELIO </div>
+        <div class="tab-bar">
+            <button id="btn-logic" class="tab-btn active" onclick="switchTab('logic')">Code Editor</button>
+            <button id="btn-texture" class="tab-btn" onclick="switchTab('texture')">Texture Painter</button>
+        </div>
+        <div class="engine-controls">
             <button class="btn run" onclick="App.run()">START</button>
             <button class="btn stop" onclick="App.stop()">STOP</button>
         </div>
-        <div id="canvas3d" tabindex="0"></div>
-        <div class="panel-section">
-            <div class="section-header">
-                <span>SCRIPTS</span>
-                <button class="add-btn" onclick="Editor.showModal()">+</button>
-            </div>
-            <div id="scriptList" class="scroll-area"></div>
-        </div>
-        <div class="panel-section">
-            <div class="section-header">SCENE EXPLORER</div>
-            <div id="sceneList" class="scroll-area"></div>
-        </div>
-        <div id="log">> System bereit.</div>
     </div>
+
+    <div id="main-container">
+
+        <div id="blocklyArea"></div>
+        <div id="textureEditor" style="display: none;">
+            <div class="painter-layout">
+                <div class="canvas-card">
+                    <canvas id="pixelCanvas" width="512" height="512"></canvas>
+
+                    <div class="tex-controls">
+                        <div class="tool-group">
+                            <button class="btn secondary" onclick="TextureEditor.setMode('paint')">✏️ Stift</button>
+                            <button class="btn secondary" onclick="TextureEditor.setMode('erase')">🧽 Radierer</button>
+                            <input type="color" id="paintColor" value="#4CFF00">
+                        </div>
+
+                        <div class="save-group">
+                            <input type="text" id="textureName" placeholder="Textur Name...">
+                            <button class="btn run" onclick="TextureEditor.save()">Speichern</button>
+                            <button class="btn stop" onclick="TextureEditor.clear()">Reset</button>
+                        </div>
+                    </div>
+                    <div id="tex-status">> Bereit zum Zeichnen.</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resizer"></div>
+
+        <div id="sidePanel">
+            <div id="statusTag">System Bereit</div>
+
+            <div id="canvas3d" tabindex="0"></div>
+
+            <div class="panel-section">
+                <div class="section-header">
+                    <span>SCRIPTS</span>
+                    <button class="add-btn" onclick="Editor.showModal()">+</button>
+                </div>
+                <div id="scriptList" class="scroll-area"></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-header">SCENE EXPLORER</div>
+                <div id="sceneList" class="scroll-area"></div>
+            </div>
+
+            <div id="log">> Initialisierung abgeschlossen.</div>
+        </div>
+    </div>
+
     <div id="nameModal" class="modal">
         <div class="modal-content">
-            <h3>Neues Script</h3>
+            <h3>Neues Script erstellen</h3>
+            <p>Gib einen Namen für dein Script ein:</p>
             <input type="text" id="scriptNameInput" placeholder="Name..." autofocus>
             <div class="modal-footer">
                 <button class="btn run" onclick="Editor.createScript()">Erstellen</button>
@@ -45,22 +88,24 @@
             </div>
         </div>
     </div>
+
     <xml id="toolbox" style="display: none">
         <category name="Events" colour="#FFD500">
             <block type="event_flag"></block>
             <block type="event_key"></block>
             <block type="event_tick"></block>
         </category>
+
         <category name="3D Formen" colour="#4C97FF">
             <block type="create_shape"></block>
             <block type="create_group"></block>
-
+            <block type="set_texture"></block>
         </category>
+
         <category name="Bewegung" colour="#5CB1D6">
             <block type="set_position"></block>
             <block type="move_object"></block>
             <block type="set_scale"></block>
-            <block type="rotate_forever"></block>
             <block type="set_dimensions">
                 <value name="VALUE">
                     <block type="math_number">
@@ -75,13 +120,10 @@
                     </block>
                 </value>
             </block>
-        </category>
-        <category name="Design" colour="#9966FF">
-            <block type="colour_picker_custom"></block>
-            <block type="set_light_intensity"></block>
+            <block type="rotate_forever"></block>
         </category>
 
-        <category name="Controller" colour="#a55b80">
+        <category name="Physik & Steuerung" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>
             <block type="fpc_move"></block>
@@ -89,12 +131,20 @@
             <block type="set_solid"></block>
         </category>
 
-        <category name="Number" colour="#5CB1D6">
+        <category name="Design" colour="#9966FF">
+            <block type="colour_picker_custom"></block>
+            <block type="set_light_intensity"></block>
+        </category>
+
+        <category name="Mathe" colour="#5CB1D6">
             <block type="math_number"></block>
         </category>
     </xml>
+
     <script src="src/js/engine.js"></script>
+    <script src="src/js/textureEditor.js"></script>
     <script src="src/js/blocks.js"></script>
+
 </body>
 
 </html>
