@@ -9,9 +9,56 @@ Blockly.Blocks['move_object'] = { init: function() { this.appendDummyInput().app
 Blockly.Blocks['set_scale'] = { init: function() { this.appendDummyInput().appendField("Größe von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("auf:"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['rotate_forever'] = { init: function() { this.appendDummyInput().appendField("Drehe").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("fortlaufend Achse:").appendField(new Blockly.FieldDropdown([["X","x"],["Y","y"],["Z","z"]]), "AXIS"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['colour_picker_custom'] = { init: function() { this.appendDummyInput().appendField(new Blockly.FieldDropdown([["Rot","#ff0000"],["Grün","#00ff00"],["Blau","#0000ff"],["Gelb","#ffff00"],["Weiß","#ffffff"]]), "COL"); this.setOutput(true, "Colour"); this.setColour(20); } };
+Blockly.Blocks['set_light_intensity'] = {init: function() {this.appendDummyInput().appendField("Setze Lichtintensität auf"); this.appendValueInput("VALUE").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
+Blockly.Blocks['setup_fpc'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Setup FPC: Spieler")
+        .appendField(new Blockly.FieldTextInput("player"), "NAME");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
+  }
+};
+Blockly.Blocks['fpc_look'] = {
+  init: function() {
+    this.appendDummyInput().appendField("Kamera mit Maus drehen");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
+  }
+};
+Blockly.Blocks['fpc_move'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Bewege relativ zu Blickrichtung:")
+        .appendField(new Blockly.FieldDropdown([["Vorwärts","forward"], ["Rückwärts","backward"], ["Links","left"], ["Rechts","right"]]), "DIR");
+    this.appendValueInput("SPEED").setCheck("Number").appendField("Speed");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
+  }
+};
+Blockly.Blocks['event_tick'] = {
+  init: function() {
+    this.appendDummyInput().appendField("Dauerhaft (Jeden Frame)");
+    this.setNextStatement(true);
+    this.setColour(60);
+  }
+};
 
-const isConnected = (b) => { let r = b.getRootBlock(); return r.type === 'event_flag' || r.type === 'event_key'; };
-const wrap = (fn) => function(b, g) { if (!isConnected(b)) return ""; return fn(b, g); };
+
+const isConnected = (b) => { 
+    let r = b.getRootBlock(); 
+    // Ein Block ist nur gültig, wenn sein oberster Block ein Event-Block ist
+    return ["event_flag", "event_key", "event_object_click", "event_tick"].includes(r.type); 
+};
+
+// Wir überschreiben die Standard-Generierung für JEDEN Block
+const wrap = (fn) => function(b, g) { 
+    if (!isConnected(b)) return ""; 
+    return fn(b, g); 
+};
 
 javascriptGenerator.forBlock['event_flag'] = (b, g) => { let n = b.getNextBlock(); return n ? g.blockToCode(n) : ""; };
 javascriptGenerator.forBlock['event_key'] = (b, g) => { let k = b.getFieldValue('KEY'), n = b.getNextBlock(); return `App.registerKeyEvent('${k}', () => {\n${n ? g.blockToCode(n) : ""}});\n`; };
@@ -22,6 +69,26 @@ javascriptGenerator.forBlock['move_object'] = wrap((b, g) => `App.move('${b.getF
 javascriptGenerator.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', 0) || 1});\n`);
 javascriptGenerator.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
 javascriptGenerator.forBlock['colour_picker_custom'] = (b, g) => [g.quote_(b.getFieldValue('COL')), 0];
+javascriptGenerator.forBlock['set_light_intensity'] = (block, generator) => {
+  const value = generator.valueToCode(block, 'VALUE', 0) || "1.0";
+  return `App.setLightIntensity(${value});\n`;
+};
+javascriptGenerator.forBlock['setup_fpc'] = (b) => `App.setupFPC('${b.getFieldValue('NAME')}');\n`;
+javascriptGenerator.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
+javascriptGenerator.forBlock['fpc_move'] = (b, g) => {
+  const dir = b.getFieldValue('DIR');
+  const speed = g.valueToCode(b, 'SPEED', 0) || "0.1";
+  return `App.moveFPC('${dir}', ${speed});\n`;
+};
+javascriptGenerator.forBlock['event_tick'] = (b, g) => {
+   
+    return `App.onTick(() => {\n${b.getNextBlock() ? g.blockToCode(b.getNextBlock()) : ""}});\n`;
+};
+
+
+
+
+
 
 window.Editor = {
     scripts: { "Main": null },
