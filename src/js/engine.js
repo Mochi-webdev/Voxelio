@@ -679,3 +679,40 @@ window.switchTab = function (tab) {
         if (!TextureEditor.initialized) TextureEditor.init();
     }
 };
+// Das UI-Objekt für Cloud-Operationen
+window.UI = {
+    // Lädt die Scripte aus Firestore und füllt den Editor
+    async loadFromCloud(projectName) {
+        if (!AuthHandler.user) return;
+        
+        try {
+            console.log("Lade Projekt: " + projectName);
+            const doc = await firebase.firestore()
+                .collection("users").doc(AuthHandler.user.uid)
+                .collection("projects").doc(projectName)
+                .get();
+
+            if (doc.exists) {
+                const data = doc.data();
+                if (data.allScripts) {
+                    // Die gespeicherten Scripte parsen
+                    window.Editor.scripts = JSON.parse(data.allScripts);
+                    
+                    // Den Editor auf das "main" Script setzen und anzeigen
+                    window.Editor.currentScript = "main";
+                    window.Editor.renderList();
+                    
+                    // Falls das main-Script Daten hat, in Blockly laden
+                    if (window.Editor.scripts["main"] && window.workspace) {
+                        Blockly.serialization.workspaces.load(window.Editor.scripts["main"], window.workspace);
+                    }
+                    console.log("✅ Projekt erfolgreich geladen");
+                }
+            } else {
+                console.log("Keine Daten für dieses Projekt gefunden.");
+            }
+        } catch (e) {
+            console.error("Fehler beim Laden aus der Cloud:", e);
+        }
+    }
+};

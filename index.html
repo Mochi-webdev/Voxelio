@@ -12,6 +12,22 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4CUiHx0GhixnFp76V5zFR2s49ETOYpwQ",
+            authDomain: "voxelio-f1bf5.firebaseapp.com",
+            projectId: "voxelio-f1bf5",
+            storageBucket: "voxelio-f1bf5.firebasestorage.app",
+            messagingSenderId: "981770039529",
+            appId: "1:981770039529:web:5b93f9c830cd5c30ffc078"
+        };
+        // Prüfen ob schon eine App existiert, ansonsten initialisieren
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            console.log("Firebase synchron initialisiert.");
+        }
+    </script>
+
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
     <script src="https://unpkg.com/@blockly/field-colour"></script>
@@ -250,7 +266,7 @@
         </category>
     </xml>
 
-    <script>
+   <script>
         let activeProjectName = "";
 
         // Tab Management
@@ -292,19 +308,25 @@
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
             activeProjectName = params.get('project');
-            const isNew = params.get('new');
+            // Hier fixen wir den ReferenceError: Wir stellen sicher, dass isNew 
+            // für das Intervall verfügbar bleibt.
+            const isProjectNew = params.get('new') === 'true'; 
 
             if (activeProjectName) {
                 document.getElementById('currentProjectDisplay').innerText = "PROJEKT: " + activeProjectName;
 
                 const checkAuth = setInterval(() => {
-                    if (window.AuthHandler && AuthHandler.user) {
+                    // Wir prüfen auf: AuthHandler, den eingeloggten User UND das UI Objekt aus engine.js
+                    if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
                         clearInterval(checkAuth);
-                        if (isNew) {
+                        
+                        if (isProjectNew) {
+                            console.log("Erstelle neues Projekt...");
                             Editor.scripts = { "main": {} };
-                            AuthHandler.saveToCloud(activeProjectName, true);
                             Editor.renderList();
+                            AuthHandler.saveToCloud(activeProjectName, true);
                         } else {
+                            console.log("Lade existierendes Projekt...");
                             UI.loadFromCloud(activeProjectName);
                         }
                     }

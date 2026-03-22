@@ -5,20 +5,36 @@ window.AuthHandler = {
     // Login Prozess
     async login() {
         try {
+            console.log("Login-Prozess gestartet...");
             const provider = new firebase.auth.GoogleAuthProvider();
-            // Redirect ist stabiler gegen COOP-Blockaden in Browsern
-            await firebase.auth().signInWithRedirect(provider);
+            
+            // Nutze signInWithPopup für bessere User Experience, 
+            // falls das blockiert wird, ist der Fallback signInWithRedirect
+            await firebase.auth().signInWithPopup(provider);
+            
+            console.log("Login erfolgreich!");
         } catch (e) {
-            console.error("Login Fehler:", e);
-            alert("Login fehlgeschlagen.");
+            console.error("Login Fehler Details:", e);
+            if (e.code === 'auth/popup-blocked') {
+                alert("Bitte erlaube Pop-ups für diese Seite oder klicke erneut.");
+            } else if (e.code === 'auth/operation-not-supported-in-this-environment') {
+                // Falls lokal ohne Webserver gestartet (file://)
+                alert("Firebase Login funktioniert nur über einen Webserver (http/https), nicht über lokales Öffnen der Datei.");
+            } else {
+                alert("Login fehlgeschlagen: " + e.message);
+            }
         }
     },
 
     // Logout Prozess
     async logout() {
         if (confirm("Möchtest du dich wirklich abmelden?")) {
-            await firebase.auth().signOut();
-            window.location.reload();
+            try {
+                await firebase.auth().signOut();
+                window.location.reload();
+            } catch (e) {
+                console.error("Logout Fehler:", e);
+            }
         }
     },
 
@@ -34,12 +50,17 @@ window.AuthHandler = {
         }
     },
 
-    // Speichern in die Cloud (Wird von der Engine aufgerufen)
+    // Speichern in die Cloud
     async saveToCloud(projectName, isAutosave = false) {
-        if (!this.user || !projectName) return;
+        if (!this.user || !projectName) {
+            if(!isAutosave) console.warn("Speichern nicht möglich: Kein User oder kein Projektname.");
+            return;
+        }
 
         try {
+            // Sicherstellen, dass Editor existiert
             const scriptsData = JSON.stringify(window.Editor ? window.Editor.scripts : {});
+            
             await firebase.firestore()
                 .collection("users").doc(this.user.uid)
                 .collection("projects").doc(projectName)
@@ -48,24 +69,31 @@ window.AuthHandler = {
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-            if (!isAutosave) console.log("✅ Projekt in Cloud gespeichert");
+            if (!isAutosave) {
+                console.log("✅ Projekt in Cloud gespeichert");
+                alert("Gespeichert!");
+            }
         } catch (e) {
             console.error("Cloud Save Error:", e);
+            alert("Fehler beim Speichern in der Cloud.");
         }
     }
 };
 
-// Überwachung des Login-Status
+// Überwachung des Login-Status (Wird automatisch von Firebase gefeuert)
 firebase.auth().onAuthStateChanged(user => {
     window.AuthHandler.user = user;
     const loginBtn = document.getElementById('loginBtn');
     const emailDisplay = document.getElementById('userEmail');
 
     if (user) {
+        console.log("Eingeloggt als:", user.email);
         if (loginBtn) loginBtn.innerText = "👤 " + (user.displayName || "Profil");
         if (emailDisplay) emailDisplay.innerText = user.email;
     } else {
+        console.log("Nicht eingeloggt.");
         if (loginBtn) loginBtn.innerText = "🔑 Login";
+        if (emailDisplay) emailDisplay.innerText = "Nicht angemeldet";
     }
 });
 

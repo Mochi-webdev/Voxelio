@@ -22,9 +22,8 @@
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-        // Zugriff auf auth und db über das globale firebase Objekt
     </script>
-
+    
     <script src="src/js/authHandler.js"></script>
 </head>
 <body>
@@ -49,7 +48,7 @@
     </div>
 
     <script>
-        async function createNewProject() {
+        function createNewProject() {
             const name = prompt("Name des Projekts:");
             if (name) {
                 window.location.href = `index.html?project=${encodeURIComponent(name)}&new=true`;
@@ -58,10 +57,9 @@
 
         // Listener für das Laden der Projekte
         firebase.auth().onAuthStateChanged(async (user) => {
+            const grid = document.getElementById('projectGrid');
             if (user) {
-                const grid = document.getElementById('projectGrid');
                 grid.innerHTML = "<p>Lade Projekte...</p>";
-                
                 try {
                     const snapshot = await firebase.firestore()
                         .collection("users").doc(user.uid)
@@ -83,7 +81,10 @@
                     });
                 } catch (e) {
                     console.error("Fehler beim Laden:", e);
+                    grid.innerHTML = "<p>Fehler beim Laden der Projekte.</p>";
                 }
+            } else {
+                grid.innerHTML = "<p>Bitte logge dich ein, um deine Projekte zu sehen.</p>";
             }
         });
     </script>
