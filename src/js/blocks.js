@@ -310,6 +310,30 @@ Blockly.Blocks['remove_ui'] = {
     this.setColour(260);
   }
 };
+// Block: UI Text setzen
+Blockly.Blocks['set_ui_text'] = {
+  init: function() {
+    this.appendValueInput("TEXT")
+        .setCheck(null)
+        .appendField("Setze Text von UI")
+        .appendField(new Blockly.FieldTextInput("meinUI"), "ID")
+        .appendField("auf");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(260);
+  }
+};
+
+// Hilfsblock: Text zusammenfügen (String Join)
+Blockly.Blocks['text_join_simple'] = {
+  init: function() {
+    this.appendValueInput("A").setCheck(null);
+    this.appendValueInput("B").setCheck(null).appendField(" + ");
+    this.setInputsInline(true);
+    this.setOutput(true, "String");
+    this.setColour(160);
+  }
+};
 
 
 const isConnected = (b) => { 
@@ -459,7 +483,17 @@ javascriptGenerator.forBlock['remove_ui'] = function(block) {
   const id = block.getFieldValue('ID');
   return `App.removeUI('${id}');\n`;
 };
+javascriptGenerator.forBlock['set_ui_text'] = function(block, generator) {
+  const id = block.getFieldValue('ID');
+  const text = generator.valueToCode(block, 'TEXT', 0) || "''";
+  return `App.setUIText('${id}', ${text});\n`;
+};
 
+javascriptGenerator.forBlock['text_join_simple'] = function(block, generator) {
+  const a = generator.valueToCode(block, 'A', 0) || "''";
+  const b = generator.valueToCode(block, 'B', 0) || "''";
+  return [`(${a} + "" + ${b})`, 0]; // Das + "" erzwingt, dass es Text wird
+};
 
 
 

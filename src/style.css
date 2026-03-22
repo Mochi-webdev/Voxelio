@@ -141,3 +141,27 @@ body {
     border-radius: 12px;
     border: 1px solid #333;
 }
+.scene-item {
+    padding: 5px 10px;
+    margin: 2px 0;
+    background: #2a2a2a;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scene-item:hover {
+    background: #333;
+}
+
+.scene-item small {
+    opacity: 0.5;
+    font-size: 10px;
+}
+
+.ui-item {
+    border-left: 3px solid #A55B80; /* Violette Markierung für UI */
+}

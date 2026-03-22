@@ -140,6 +140,7 @@
             <block type="logic_boolean"></block>
             <block type="is_touching"></block>
             <block type="check_color"></block>
+            <block type="ui_button_pressed"></block>
         </category>
 
         <category name="Design" colour="#9966FF">
@@ -153,9 +154,19 @@
 
         <category name="UI" colour="#A55B80">
             <block type="create_ui"></block>
-            <block type="ui_button_pressed"></block>
             <block type="remove_ui"></block>
             <block type="set_ui_parent"></block>
+            <block type="set_ui_text">
+                <value name="TEXT">
+                    <block type="text_join_simple">
+                        <value name="A">
+                            <block type="text">
+                                <field name="TEXT">Wert: </field>
+                            </block>
+                        </value>
+                    </block>
+                </value>
+            </block>
         </category>
         <category name="Misc" colour="#FFAB19">
             <block type="create_group"></block>

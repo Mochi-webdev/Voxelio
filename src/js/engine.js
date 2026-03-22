@@ -195,13 +195,48 @@ window.App = {
         this.updateExplorer();
     },
     updateExplorer() {
-        let l = document.getElementById('sceneList');
-        l.innerHTML = '';
+        const list = document.getElementById('sceneList');
+        if (!list) return;
+        list.innerHTML = ""; // Liste leeren
+
+        // --- Sektion 1: 3D Objekte ---
+        const section3D = document.createElement('div');
+        section3D.innerHTML = "<small style='color: #888;'>3D OBJEKTE</small>";
+        list.appendChild(section3D);
+
         Object.keys(this.objects).forEach(name => {
-            let i = document.createElement('div');
-            i.className = 'explorer-item';
-            i.innerHTML = `${this.objects[name] instanceof THREE.Group ? '📁' : '📦'} ${name}`;
-            l.appendChild(i);
+            const item = document.createElement('div');
+            item.className = "scene-item";
+            item.innerHTML = `<span>📦 ${name}</span>`;
+            // Klick-Event (optional: Objekt in der Szene kurz blinken lassen)
+            item.onclick = () => console.log("3D Objekt gewählt:", name);
+            list.appendChild(item);
+        });
+
+        // Trenner
+        const hr = document.createElement('hr');
+        hr.style.border = "0; border-top: 1px solid #333; margin: 10px 0;";
+        list.appendChild(hr);
+
+        // --- Sektion 2: UI Elemente ---
+        const sectionUI = document.createElement('div');
+        sectionUI.innerHTML = "<small style='color: #888;'>UI ELEMENTE</small>";
+        list.appendChild(sectionUI);
+
+        Object.keys(this.uiElements).forEach(id => {
+            const item = document.createElement('div');
+            item.className = "scene-item ui-item";
+            // Wir zeigen auch den Typ an (Button, Frame etc.)
+            const type = this.uiElements[id].tagName.toLowerCase() === 'button' ? 'Button' : 'Frame';
+            item.innerHTML = `<span>🖼️ ${id} <small>(${type})</small></span>`;
+
+            // Highlight-Effekt: Wenn man im Explorer klickt, blinkt das UI-Element kurz auf
+            item.onclick = () => {
+                const el = this.uiElements[id];
+                el.style.outline = "2px solid #4CFF00";
+                setTimeout(() => el.style.outline = "none", 500);
+            };
+            list.appendChild(item);
         });
     },
     setViewMode(mode) {
@@ -227,6 +262,15 @@ window.App = {
             this.camera.lookAt(new THREE.Vector3(0, 1.6, 0));
 
             this.fpcPlayer.visible = true;
+        }
+    },
+    setUIText(id, text) {
+        const el = this.uiElements[id];
+        if (el) {
+            // Bei Buttons und Divs ändern wir den innerText
+            el.innerText = text;
+        } else {
+            console.warn(`UI-Text Fehler: Element mit ID '${id}' nicht gefunden.`);
         }
     },
     setDimension(name, axis, value) {
@@ -474,6 +518,8 @@ window.App = {
         } else {
             console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
         }
+
+        this.updateExplorer();
     },
 
     isButtonClicked(id) {
