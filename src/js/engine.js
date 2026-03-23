@@ -664,10 +664,14 @@ window.switchTab = function (tab) {
 };
 
 window.UI = {
-    loadFromCloud: async function(projectName) {
-        if (!window.AuthHandler || !AuthHandler.user) return;
+    loadFromCloud: async function (projectName) {
+        if (!window.AuthHandler || !AuthHandler.user) {
+            console.error("Laden abgebrochen: Benutzer nicht angemeldet.");
+            return;
+        }
 
         try {
+            console.log(`Lade Projekt: ${projectName}...`);
             const doc = await firebase.firestore()
                 .collection('users')
                 .doc(AuthHandler.user.uid)
@@ -678,12 +682,19 @@ window.UI = {
             if (doc.exists) {
                 const data = doc.data();
 
+
                 if (data.textures) {
                     window.App.textures = data.textures;
+                    console.log("Texturen geladen:", Object.keys(data.textures));
+                } else {
+                    window.App.textures = {};
                 }
+
+
 
                 if (data.scripts) {
                     try {
+                        // Check if data is encoded (String) or old format (Object)
                         if (typeof data.scripts === 'string') {
                             const decoded = decodeURIComponent(escape(atob(data.scripts)));
                             window.Editor.scripts = JSON.parse(decoded);
@@ -691,26 +702,48 @@ window.UI = {
                             window.Editor.scripts = data.scripts;
                         }
                     } catch (e) {
+                        console.error("Decoding error:", e);
                         window.Editor.scripts = { "Main": {} };
                     }
                 }
 
-                const scriptNames = Object.keys(window.Editor.scripts);
-                const scriptToLoad = scriptNames.includes("Main") ? "Main" : scriptNames[0];
-                window.Editor.currentScript = scriptToLoad;
 
-                if (window.Editor.renderList) window.Editor.renderList();
+                const scriptNames = Object.keys(window.Editor.scripts);
+                const scriptToDisplay = scriptNames.includes("Main") ? "Main" : scriptNames[0];
+
+                window.Editor.currentScript = scriptToDisplay;
+
+
+                if (window.Editor.renderList) {
+                    window.Editor.renderList();
+                }
+
 
                 if (window.workspace) {
                     window.workspace.clear();
-                    const savedBlocks = window.Editor.scripts[scriptToLoad];
+                    const savedBlocks = window.Editor.scripts[scriptToDisplay];
+
                     if (savedBlocks && Object.keys(savedBlocks).length > 0) {
-                        Blockly.serialization.workspaces.load(savedBlocks, window.workspace);
+                        try {
+                            Blockly.serialization.workspaces.load(savedBlocks, window.workspace);
+                            console.log("Blöcke erfolgreich in Workspace geladen.");
+                        } catch (err) {
+                            console.error("Fehler beim Parsen der Blöcke:", err);
+
+                            try {
+                                const xml = Blockly.utils.xml.textToDom(savedBlocks);
+                                Blockly.Xml.domToWorkspace(xml, window.workspace);
+                            } catch (e2) { console.error("XML Fallback fehlgeschlagen."); }
+                        }
                     }
                 }
+
+                console.log("✅ Projekt vollständig geladen.");
+            } else {
+                console.warn("Projekt wurde in der Datenbank nicht gefunden.");
             }
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error("Kritischer Fehler beim Laden aus der Cloud:", error);
         }
     }
 };
