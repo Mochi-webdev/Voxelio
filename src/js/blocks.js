@@ -16,13 +16,30 @@ Blockly.Blocks['set_dimensions'] = { init: function() { this.appendDummyInput().
 Blockly.Blocks['set_rotation'] = { init: function() { this.appendDummyInput().appendField("Setze Rotation von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS").appendField("auf"); this.appendValueInput("DEGREE").setCheck("Number"); this.appendDummyInput().appendField("Grad"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['set_texture'] = { 
     init: function() { 
-        this.appendDummyInput().appendField("Setze Textur von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("auf").appendField(new Blockly.FieldDropdown(() => this.getOptions()), "TEX"); 
-        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); 
+        // Wir erstellen das Dropdown mit einer anonymen Funktion
+        const dropdown = new Blockly.FieldDropdown(() => this.getOptions());
+
+        this.appendDummyInput()
+            .appendField("Setze Textur von")
+            .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
+            .appendField("auf")
+            .appendField(dropdown, "TEX"); 
+
+        this.setPreviousStatement(true); 
+        this.setNextStatement(true); 
+        this.setColour(160); 
     },
     getOptions: function() { 
-        let options = []; const savedTextures = Object.keys(App.textures); 
-        if (savedTextures.length > 0) { savedTextures.forEach(name => options.push([name, name])); } 
-        else { options.push(["(Keine Texturen)", "none"]); } return options; 
+        let options = []; 
+        // Sicherer Zugriff auf App.textures
+        const savedTextures = Object.keys((window.App && window.App.textures) ? window.App.textures : {}); 
+        
+        if (savedTextures.length > 0) { 
+            savedTextures.forEach(name => options.push([name, name])); 
+        } else { 
+            options.push(["(Keine Texturen)", "none"]); 
+        } 
+        return options; 
     }
 };
 

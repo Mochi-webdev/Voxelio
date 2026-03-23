@@ -1,4 +1,6 @@
 // Ganz oben in der engine.js, noch vor allen anderen Funktionen!
+window.App = window.App || {};
+window.App.textures = window.App.textures || {};
 window.Editor = {
     scripts: { "main": {} }, 
     currentScript: "main",
@@ -683,36 +685,39 @@ window.switchTab = function (tab) {
 window.UI = {
     // Lädt die Scripte aus Firestore und füllt den Editor
     async loadFromCloud(projectName) {
-        if (!AuthHandler.user) return;
-        
-        try {
-            console.log("Lade Projekt: " + projectName);
-            const doc = await firebase.firestore()
-                .collection("users").doc(AuthHandler.user.uid)
-                .collection("projects").doc(projectName)
-                .get();
+    if (!AuthHandler.user) return;
+    
+    try {
+        const doc = await firebase.firestore()
+            .collection("users").doc(AuthHandler.user.uid)
+            .collection("projects").doc(projectName)
+            .get();
 
-            if (doc.exists) {
-                const data = doc.data();
-                if (data.allScripts) {
-                    // Die gespeicherten Scripte parsen
-                    window.Editor.scripts = JSON.parse(data.allScripts);
-                    
-                    // Den Editor auf das "main" Script setzen und anzeigen
-                    window.Editor.currentScript = "main";
-                    window.Editor.renderList();
-                    
-                    // Falls das main-Script Daten hat, in Blockly laden
-                    if (window.Editor.scripts["main"] && window.workspace) {
-                        Blockly.serialization.workspaces.load(window.Editor.scripts["main"], window.workspace);
-                    }
-                    console.log("✅ Projekt erfolgreich geladen");
-                }
-            } else {
-                console.log("Keine Daten für dieses Projekt gefunden.");
+        if (doc.exists) {
+            const data = doc.data();
+
+            // ZUERST: Texturen in das App-Objekt laden
+            if (data.allTextures) {
+                window.App.textures = JSON.parse(data.allTextures);
+                console.log("✅ Texturen geladen:", Object.keys(window.App.textures));
             }
-        } catch (e) {
-            console.error("Fehler beim Laden aus der Cloud:", e);
+
+            // DANACH: Scripte laden
+            if (data.allScripts) {
+                window.Editor.scripts = JSON.parse(data.allScripts);
+                window.Editor.renderList();
+                
+                if (window.Editor.scripts[window.Editor.currentScript] && window.workspace) {
+                    // Da App.textures jetzt existiert, findet Blockly die Option "sat"
+                    Blockly.serialization.workspaces.load(
+                        window.Editor.scripts[window.Editor.currentScript], 
+                        window.workspace
+                    );
+                }
+            }
         }
+    } catch (e) {
+        console.error("Fehler beim Laden:", e);
     }
+}
 };

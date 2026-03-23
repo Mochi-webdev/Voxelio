@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Voxelio - Dashboard</title>
-    <link rel="stylesheet" href="src/style.css">
+    <link rel="stylesheet" href="src/dasboardstyle.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -28,7 +28,10 @@
 </head>
 <body>
     <div class="top-nav">
-        <div class="brand">VOXELIO</div>
+        <div class="brand">
+            <img src="assets/Logo.png" alt="Logo" class="logo-img"> 
+            VOXELIO
+        </div>
         <div class="actions">
             <div class="user-menu">
                 <button id="loginBtn" onclick="AuthHandler.handleUserClick()" class="nav-btn">🔑 Login</button>
@@ -37,37 +40,94 @@
                     <button onclick="AuthHandler.logout()" class="logout-btn">🚪 Abmelden</button>
                 </div>
             </div>
-            <button class="nav-btn run-btn" onclick="createNewProject()">+ Neues Projekt</button>
+            <button class="nav-btn run-btn" onclick="openCreateModal()">+ Neues Projekt</button>
         </div>
     </div>
 
     <div class="dashboard-content">
-        <h2>Deine Cloud-Projekte</h2>
+        <h2>Deine Projekte</h2>
         <div id="projectGrid" class="project-grid">
             </div>
     </div>
 
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <h3>Neues Projekt erstellen</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Gib deinem Projekt einen Namen</p>
+            <input type="text" id="newProjectName" placeholder="z.B. Mein Projekt 1">
+            <div class="modal-actions">
+                <button onclick="closeModal()" class="nav-btn">Abbrechen</button>
+                <button onclick="confirmCreateProject()" class="run2-btn">Erstellen</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function createNewProject() {
-            const name = prompt("Name des Projekts:");
+        // --- Modal Logik ---
+        function openCreateModal() {
+            document.getElementById('projectModal').style.display = 'block';
+            document.getElementById('newProjectName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').style.display = 'none';
+            document.getElementById('newProjectName').value = '';
+        }
+
+        function confirmCreateProject() {
+            const nameInput = document.getElementById('newProjectName');
+            const name = nameInput.value.trim();
             if (name) {
                 window.location.href = `index.html?project=${encodeURIComponent(name)}&new=true`;
+            } else {
+                nameInput.style.borderColor = 'red';
             }
         }
 
-        // Listener für das Laden der Projekte
+        // Modal schließen wenn man außerhalb klickt
+        window.onclick = function(event) {
+            const modal = document.getElementById('projectModal');
+            if (event.target == modal) closeModal();
+        }
+
+        // --- Projekt löschen Funktion ---
+        async function deleteProject(projectId) {
+            if (confirm(`Möchtest du das Projekt "${projectId}" wirklich unwiderruflich löschen?`)) {
+                const user = firebase.auth().currentUser;
+                if (!user) return;
+
+                try {
+                    await firebase.firestore()
+                        .collection("users").doc(user.uid)
+                        .collection("projects").doc(projectId)
+                        .delete();
+                    
+                    // Grid nach dem Löschen aktualisieren
+                    console.log(`Projekt ${projectId} gelöscht.`);
+                    location.reload(); 
+                } catch (e) {
+                    console.error("Fehler beim Löschen:", e);
+                    alert("Fehler beim Löschen: " + e.message);
+                }
+            }
+        }
+
+        // --- Projekte laden & Grid befüllen ---
         firebase.auth().onAuthStateChanged(async (user) => {
             const grid = document.getElementById('projectGrid');
             if (user) {
-                grid.innerHTML = "<p>Lade Projekte...</p>";
+                grid.innerHTML = "<p>Lade deine Welten...</p>";
                 try {
                     const snapshot = await firebase.firestore()
                         .collection("users").doc(user.uid)
-                        .collection("projects").get();
+                        .collection("projects")
+                        .orderBy("updatedAt", "desc") // Neueste zuerst
+                        .get();
                     
                     grid.innerHTML = "";
                     if (snapshot.empty) {
-                        grid.innerHTML = "<p>Noch keine Projekte vorhanden.</p>";
+                        grid.innerHTML = "<p>Noch keine Projekte vorhanden. Erstelle dein erstes!</p>";
+                        return;
                     }
 
                     snapshot.forEach(doc => {
@@ -75,13 +135,18 @@
                         div.className = 'project-card';
                         div.innerHTML = `
                             <h3>${doc.id}</h3>
-                            <button onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>
+                            <div class="card-footer">
+                                <button class="open-btn" onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>
+                                <button class="delete-btn" onclick="deleteProject('${doc.id}')" title="Projekt löschen">
+                                    🗑️
+                                </button>
+                            </div>
                         `;
                         grid.appendChild(div);
                     });
                 } catch (e) {
                     console.error("Fehler beim Laden:", e);
-                    grid.innerHTML = "<p>Fehler beim Laden der Projekte.</p>";
+                    grid.innerHTML = "<p>Fehler beim Laden der Projekte. Bitte Seite neu laden.</p>";
                 }
             } else {
                 grid.innerHTML = "<p>Bitte logge dich ein, um deine Projekte zu sehen.</p>";
