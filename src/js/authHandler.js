@@ -52,31 +52,34 @@ window.AuthHandler = {
      * @param {boolean} isAutosave - Wenn true, erscheint kein Alert
      */
     saveToCloud: async function (projectName, silent = false) {
-        if (window.Editor) {
-            window.Editor.updateCurrentScriptBuffer();
-        }
         if (!this.user) return;
 
-
         if (window.workspace && window.Editor && Editor.currentScript) {
-            const xml = Blockly.Xml.workspaceToDom(window.workspace);
-            const xmlText = Blockly.Xml.domToText(xml);
-
-            Editor.scripts[Editor.currentScript] = xmlText;
+          
+            Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
         }
 
+       
         const projectData = {
             scripts: Editor.scripts,
-            textures: window.App.textures || {},
+            textures: (window.App && window.App.textures) ? window.App.textures : {},
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        return firebase.firestore()
-            .collection('users')
-            .doc(this.user.uid)
-            .collection('projects')
-            .doc(projectName)
-            .set(projectData, { merge: true });
+      
+        try {
+            await firebase.firestore()
+                .collection('users')
+                .doc(this.user.uid)
+                .collection('projects')
+                .doc(projectName)
+                .set(projectData, { merge: true });
+
+            console.log(` Projekt "${projectName}" gespeichert.`);
+        } catch (error) {
+            console.error("Fehler beim Cloud-Speichern:", error);
+            throw error; 
+        }
     }
 };
 

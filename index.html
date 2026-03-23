@@ -21,7 +21,7 @@
             messagingSenderId: "981770039529",
             appId: "1:981770039529:web:5b93f9c830cd5c30ffc078"
         };
-       
+
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
             console.log("Firebase synchron initialisiert.");
@@ -41,7 +41,6 @@
     <script defer src="src/js/authHandler.js"></script>
 
     <style>
-       
         .user-menu {
             position: relative;
             display: inline-block;
@@ -89,7 +88,7 @@
             background: rgba(255, 85, 85, 0.1);
         }
 
-    
+
         #gameHUD {
             position: fixed;
             top: 0;
@@ -101,7 +100,7 @@
             display: none;
         }
 
-        
+
         #gameHUD>* {
             pointer-events: auto;
             position: absolute;
@@ -269,6 +268,7 @@
             <block type="logic_boolean"></block>
             <block type="is_touching"></block>
             <block type="ui_button_pressed"></block>
+            <block type="math_number"></block>
         </category>
         <category name="UI" colour="#A55B80">
             <block type="create_ui"></block>
@@ -285,12 +285,12 @@
     </xml>
 
     <script>
-        
+
         let activeProjectName = "";
         let hasChanges = false;
         let autosaveTimer = null;
 
-    
+
         window.addEventListener('beforeunload', (e) => {
             if (hasChanges) {
                 e.preventDefault();
@@ -298,7 +298,7 @@
             }
         });
 
-        
+
         function switchTab(tab) {
             const blocklyArea = document.getElementById('blocklyArea');
             const textureEditor = document.getElementById('textureEditor');
@@ -319,7 +319,7 @@
             }
         }
 
-        
+
         function startGlobalAutosave() {
             if (autosaveTimer) clearInterval(autosaveTimer);
 
@@ -328,41 +328,44 @@
                     console.log("☁️ Autosave wird ausgeführt...");
                     await saveCurrent(true);
                 }
-            }, 5000); 
+            }, 5000);
         }
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
 
-         
-            hasChanges = false;
+            
+            if (window.Editor && window.workspace) {
+                Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
+            }
 
             try {
                 if (isSilent) {
                     const cloudIcon = document.getElementById('save-status-cloud');
                     if (cloudIcon) {
                         cloudIcon.style.display = 'block';
-                        setTimeout(() => { cloudIcon.style.display = 'none'; }, 1500);
+                       
                     }
                 }
 
                 if (window.AuthHandler) {
                     
                     await AuthHandler.saveToCloud(activeProjectName, isSilent);
-
-                    if (!isSilent) {
-                        
-                        alert("Projekt erfolgreich gespeichert!");
-                    }
+                    hasChanges = false;
+                    console.log("✅ Speichern erfolgreich.");
                 }
             } catch (err) {
-                
-                hasChanges = true;
-                console.error("Speicherfehler:", err);
+                console.error("❌ Speicherfehler:", err);
                 if (!isSilent) alert("Fehler beim Speichern!");
+            } finally {
+                if (isSilent) {
+                    setTimeout(() => {
+                        document.getElementById('save-status-cloud').style.display = 'none';
+                    }, 1000);
+                }
             }
         }
 
-  
+
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
             activeProjectName = params.get('project');
@@ -390,17 +393,17 @@
                         UI.loadFromCloud(activeProjectName);
                     }
 
-                    
+
                     startGlobalAutosave();
 
-                   
+
                     if (window.workspace) {
                         window.workspace.addChangeListener((e) => {
-                           
+
                             if (e.isUiEvent) return;
-                            
+
                             if (e.type === Blockly.Events.FINISHED_LOADING) return;
-                            
+
                             if (e.type === Blockly.Events.BLOCK_CREATE ||
                                 e.type === Blockly.Events.BLOCK_DELETE ||
                                 e.type === Blockly.Events.BLOCK_CHANGE ||
