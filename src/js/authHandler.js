@@ -1,19 +1,16 @@
-/**
- * AuthHandler - Verwaltet Login, Logout und Cloud-Synchronisation
- * Speichert Blockly-Skripte UND Texturen in Firebase Firestore.
- */
+
 window.AuthHandler = {
     user: null,
 
-    // Login Prozess (Google Popup)
+
     async login() {
         try {
             console.log("Login-Prozess gestartet...");
             const provider = new firebase.auth.GoogleAuthProvider();
-            
-            // Popup für Google Login
+
+
             await firebase.auth().signInWithPopup(provider);
-            
+
             console.log("Login erfolgreich!");
         } catch (e) {
             console.error("Login Fehler Details:", e);
@@ -27,7 +24,6 @@ window.AuthHandler = {
         }
     },
 
-    // Logout Prozess
     async logout() {
         if (confirm("Möchtest du dich wirklich abmelden? Dein Fortschritt sollte vorher gespeichert sein.")) {
             try {
@@ -39,7 +35,6 @@ window.AuthHandler = {
         }
     },
 
-    // Klick-Logik für den Button (Login oder Dropdown öffnen)
     handleUserClick() {
         if (!this.user) {
             this.login();
@@ -56,44 +51,36 @@ window.AuthHandler = {
      * @param {string} projectName - Name des Projekts
      * @param {boolean} isAutosave - Wenn true, erscheint kein Alert
      */
-    async saveToCloud(projectName, isAutosave = false) {
-        if (!this.user || !projectName) {
-            if(!isAutosave) console.warn("Speichern abgebrochen: Kein User oder kein Projektname.");
-            return;
+    saveToCloud: async function (projectName, silent = false) {
+        if (window.Editor) {
+            window.Editor.updateCurrentScriptBuffer();
+        }
+        if (!this.user) return;
+
+
+        if (window.workspace && window.Editor && Editor.currentScript) {
+            const xml = Blockly.Xml.workspaceToDom(window.workspace);
+            const xmlText = Blockly.Xml.domToText(xml);
+
+            Editor.scripts[Editor.currentScript] = xmlText;
         }
 
-        try {
-            // 1. Skripte aus dem Editor sammeln
-            const scriptsData = JSON.stringify(window.Editor ? window.Editor.scripts : {});
-            
-            // 2. Texturen aus der App sammeln
-            const textureData = JSON.stringify(window.App ? window.App.textures : {});
+        const projectData = {
+            scripts: Editor.scripts,
+            textures: window.App.textures || {},
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-            // 3. In Firestore speichern (im User-Dokument unter 'projects')
-            await firebase.firestore()
-                .collection("users").doc(this.user.uid)
-                .collection("projects").doc(projectName)
-                .set({
-                    allScripts: scriptsData,
-                    allTextures: textureData, // Speichert die Pixel-Bilder
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-
-            if (!isAutosave) {
-                console.log("✅ Projekt & Texturen erfolgreich in Cloud gespeichert");
-                alert("Projekt erfolgreich gespeichert!");
-            }
-        } catch (e) {
-            console.error("Cloud Save Error:", e);
-            alert("Fehler beim Speichern in der Cloud. Details in der Konsole.");
-        }
+        return firebase.firestore()
+            .collection('users')
+            .doc(this.user.uid)
+            .collection('projects')
+            .doc(projectName)
+            .set(projectData, { merge: true });
     }
 };
 
-/**
- * Firebase Auth Listener
- * Reagiert auf Login/Logout und aktualisiert die UI-Elemente
- */
+
 firebase.auth().onAuthStateChanged(user => {
     window.AuthHandler.user = user;
     const loginBtn = document.getElementById('loginBtn');
@@ -116,10 +103,6 @@ firebase.auth().onAuthStateChanged(user => {
     }
 });
 
-/**
- * Globaler Klick-Listener für das User-Dropdown
- * Schließt das Menü, wenn man daneben klickt
- */
 window.addEventListener('click', (e) => {
     const dropdown = document.getElementById("userDropdown");
     if (!e.target.matches('#loginBtn') && dropdown) {

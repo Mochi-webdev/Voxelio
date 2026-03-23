@@ -1,55 +1,104 @@
 window.TextureEditor = {
-    initialized: false,
-    drawing: false,
-    grid: 16,
-    mode: 'paint', // 'paint' oder 'erase'
+    canvas: null,
+    ctx: null,
+    mode: 'paint',
+    isDrawing: false,
+    mirrorMode: false,
+    grid: 16, 
 
-    init() {
+    init: function() {
         this.canvas = document.getElementById('pixelCanvas');
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
-        this.initialized = true;
+     
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.canvas.onmousedown = () => this.drawing = true;
-        window.onmouseup = () => this.drawing = false;
-        this.canvas.onmousemove = (e) => this.paint(e);
-        this.canvas.onclick = (e) => this.paint(e);
-        this.clear();
-    },
-
-    setMode(newMode) {
-        this.mode = newMode;
-        this.setStatus(`Modus: ${newMode === 'paint' ? 'Stift' : 'Radierer'}`);
-    },
-
-    paint(e) {
-        if(!this.drawing && e.type !== 'click') return;
-        const rect = this.canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / (this.canvas.width / this.grid));
-        const y = Math.floor((e.clientY - rect.top) / (this.canvas.height / this.grid));
+     
+        this.canvas.onmousedown = (e) => { this.isDrawing = true; this.handleInput(e); };
+        this.canvas.onmousemove = (e) => { if (this.isDrawing) this.handleInput(e); };
+        this.canvas.onclick = (e) => this.handleInput(e);
+        window.onmouseup = () => { this.isDrawing = false; };
         
-        this.ctx.fillStyle = (this.mode === 'paint') ? document.getElementById('paintColor').value : "#ffffff";
-        this.ctx.fillRect(
-            x * (this.canvas.width / this.grid), 
-            y * (this.canvas.height / this.grid), 
-            this.canvas.width / this.grid, 
-            this.canvas.height / this.grid
-        );
+        this.setStatus("Bereit zum Zeichnen.");
     },
 
-    setStatus(msg, isError = false) {
-        const info = document.getElementById('tex-status');
-        if (info) {
-            info.innerText = msg;
-            info.style.color = isError ? "#ff4444" : "#4CFF00";
+    setMode: function(m, btn) {
+        this.mode = m;
+        
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        this.setStatus(`Modus: ${m.toUpperCase()}`);
+    },
+
+    toggleMirror: function(btn) {
+        this.mirrorMode = !this.mirrorMode;
+        btn.classList.toggle('active', this.mirrorMode);
+        this.setStatus(`Symmetrie: ${this.mirrorMode ? 'AN' : 'AUS'}`);
+    },
+
+    handleInput: function(e) {
+        const rect = this.canvas.getBoundingClientRect();
+       
+        const x = Math.floor((e.clientX - rect.left) / (rect.width / this.grid)) * (this.canvas.width / this.grid);
+        const y = Math.floor((e.clientY - rect.top) / (rect.height / this.grid)) * (this.canvas.height / this.grid);
+        const size = this.canvas.width / this.grid;
+
+        if (this.mode === 'fill') {
+            this.fillAll();
+        } else {
+            this.applyPixel(x, y, size);
+            if (this.mirrorMode) {
+                const mirroredX = this.canvas.width - x - size;
+                this.applyPixel(mirroredX, y, size);
+            }
         }
     },
 
-    clear() {
-        if (!this.ctx) return;
-        this.ctx.fillStyle = "#ffffff";
+    applyPixel: function(x, y, size) {
+        if (this.mode === 'paint') {
+            this.ctx.fillStyle = document.getElementById('paintColor').value;
+            this.ctx.fillRect(x, y, size, size);
+        } else if (this.mode === 'erase') {
+            
+            this.ctx.fillStyle = "#ffffff";
+            this.ctx.fillRect(x, y, size, size);
+        }
+    },
+
+    fillAll: function() {
+        this.ctx.fillStyle = document.getElementById('paintColor').value;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.setStatus("Leinwand geleert.");
+    },
+
+    brighten: function() {
+        this.ctx.globalCompositeOperation = 'lighter';
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.globalCompositeOperation = 'source-over';
+    },
+
+    darken: function() {
+        this.ctx.globalCompositeOperation = 'multiply';
+        this.ctx.fillStyle = 'rgba(200, 200, 200, 1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.globalCompositeOperation = 'source-over';
+    },
+
+    setStatus: function(msg, isError = false) {
+        const statusEl = document.getElementById('tex-status');
+        if (statusEl) {
+            statusEl.innerText = `> ${msg}`;
+            statusEl.style.color = isError ? "#ff4444" : "";
+        }
+    },
+
+    clear: function() {
+        if (confirm("Ganze Textur löschen?")) {
+            this.ctx.fillStyle = "#ffffff";
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.setStatus("Leinwand geleert.");
+        }
     },
 
     async save() {
@@ -61,21 +110,20 @@ window.TextureEditor = {
             return;
         }
         
-        // 1. In der App lokal speichern (Base64 String)
+        this.setStatus("Speichere...");
+
         if (!window.App.textures) window.App.textures = {};
         window.App.textures[name] = this.canvas.toDataURL(); 
         
-        // 2. Cloud-Speicherung triggern
-        // Wir nutzen window.activeProjectName, da diese Variable in der index.html global definiert ist
+       
         if(window.AuthHandler && window.activeProjectName) {
-            this.setStatus("Speichere in Cloud...");
             try {
                 await AuthHandler.saveToCloud(window.activeProjectName, true);
-                this.setStatus(`Textur '${name}' gespeichert!`);
+                this.setStatus(`'${name}' in Cloud gesichert!`);
                 
-                // 3. WICHTIG: Blockly-Toolbox aktualisieren, damit die neue Textur im Dropdown erscheint
-                if (window.workspace) {
-                    // Erzwingt eine Aktualisierung der Dropdowns in den Blöcken
+               
+                if (window.workspace && Blockly.mainWorkspace) {
+                 
                     Blockly.mainWorkspace.getToolbox().refreshSelection();
                 }
             } catch (err) {
@@ -83,7 +131,8 @@ window.TextureEditor = {
                 console.error(err);
             }
         } else {
-            this.setStatus("Lokal gespeichert (kein Projekt offen)");
+            this.setStatus("Lokal gespeichert.");
         }
     }
 };
+window.addEventListener('load', () => TextureEditor.init());

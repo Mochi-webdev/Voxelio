@@ -1,12 +1,11 @@
-/* --- Basis & Variablen (Light Mode) --- */
 :root {
-    --bg-main: #f8f9fa;       /* Sehr helles Grau/Weiß */
-    --panel-bg: #ffffff;      /* Reinweiß für Karten */
-    --accent: #4CFF00;        /* Dein Voxelio-Grün */
+    --bg-main: #f8f9fa;
+    --panel-bg: #ffffff;
+    --accent: #4CFF00;
     --accent-hover: #45e600;
-    --text-primary: #1a1a1e;  /* Fast Schwarz für Kontrast */
-    --text-secondary: #6c757d;/* Mittelgrau für Details */
-    --border: #e9ecef;       /* Subtile Linien */
+    --text-primary: #1a1a1e;
+    --text-secondary: #6c757d;
+    --border: #e9ecef;
     --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
@@ -24,6 +23,7 @@ body {
 }
 
 /* --- Navigation --- */
+
 .top-nav {
     display: flex;
     justify-content: space-between;
@@ -47,7 +47,6 @@ body {
     color: var(--text-primary);
 }
 
-/* Platzhalter für dein Logo-Bild */
 .logo-img {
     height: 32px;
     width: auto;
@@ -76,7 +75,7 @@ body {
 }
 
 .run-btn {
-    background: var(--text-primary); /* Dunkler Button im hellen Design */
+    background: var(--text-primary);
     border-color: var(--text-primary);
     color: #ffffff;
 }
@@ -88,6 +87,7 @@ body {
 }
 
 /* --- Dashboard Content --- */
+
 .dashboard-content {
     max-width: 1100px;
     margin: 4rem auto;
@@ -102,6 +102,7 @@ h2 {
 }
 
 /* --- Project Grid --- */
+
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -118,10 +119,7 @@ h2 {
     justify-content: space-between;
     min-height: 180px;
     transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-    
 }
-
-
 
 .project-card h3 {
     font-size: 1.3rem;
@@ -149,6 +147,7 @@ h2 {
 }
 
 /* --- Dropdown --- */
+
 .user-menu {
     position: relative;
 }
@@ -192,7 +191,9 @@ h2 {
 .logout-btn:hover {
     background: #fff5f5;
 }
-/* Modal Hintergrund */
+
+/* --- Modals --- */
+
 .modal {
     display: none;
     position: fixed;
@@ -205,7 +206,6 @@ h2 {
     backdrop-filter: blur(4px);
 }
 
-/* Modal Fenster */
 .modal-content {
     background-color: var(--panel-bg);
     margin: 15% auto;
@@ -232,11 +232,13 @@ h2 {
     gap: 10px;
 }
 
+/* --- Footer & Specific Buttons --- */
+
 .card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto; /* Schiebt die Buttons nach unten */
+    margin-top: auto;
 }
 
 .delete-btn {
@@ -248,6 +250,7 @@ h2 {
     filter: grayscale(1);
     transition: 0.2s;
 }
+
 .run2-btn {
     background: var(--panel-bg);
     border-color: var(--text-primary);

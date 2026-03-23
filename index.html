@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voxelio - Engine</title>
 
-    <link rel="stylesheet" href="src/styles.css">
+    <link rel="stylesheet" href="src/styles.css?v=2">
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -21,7 +21,7 @@
             messagingSenderId: "981770039529",
             appId: "1:981770039529:web:5b93f9c830cd5c30ffc078"
         };
-        // Prüfen ob schon eine App existiert, ansonsten initialisieren
+       
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
             console.log("Firebase synchron initialisiert.");
@@ -36,12 +36,12 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script defer src="src/js/engine.js"></script>
-    <script defer src="src/js/textureEditor.js"></script>
+    <script defer src="src/js/textureEditor.js?v=2"></script>
     <script defer src="src/js/blocks.js"></script>
     <script defer src="src/js/authHandler.js"></script>
 
     <style>
-        /* UI FIXES: Dropdown & HUD */
+       
         .user-menu {
             position: relative;
             display: inline-block;
@@ -89,7 +89,7 @@
             background: rgba(255, 85, 85, 0.1);
         }
 
-        /* Das HUD liegt über ALLEM, lässt aber Klicks durch (pointer-events) */
+    
         #gameHUD {
             position: fixed;
             top: 0;
@@ -101,8 +101,8 @@
             display: none;
         }
 
-        /* Nur echte UI-Elemente im HUD fangen Klicks wieder ein */
-        #gameHUD > * {
+        
+        #gameHUD>* {
             pointer-events: auto;
             position: absolute;
         }
@@ -127,33 +127,35 @@
 <body>
 
     <div class="top-nav">
-    <div class="nav-left" style="display: flex; align-items: center; gap: 30px;">
-        <div class="brand" onclick="window.location.href='dashboard.html'" style="cursor:pointer; display: flex; align-items: center; font-weight: 900; letter-spacing: 1px;">
-            <img src="assets/logo.png" alt="Logo" class="nav-icon">
-            VOXELIO
-        </div>
-
-        <div class="tab-bar">
-            <button id="btn-logic" class="tab-btn active" onclick="switchTab('logic')">Code Editor</button>
-            <button id="btn-texture" class="tab-btn" onclick="switchTab('texture')">Texture Painter</button>
-        </div>
-    </div>
-
-    <div class="actions" style="display: flex; align-items: center; gap: 10px;">
-        <span id="currentProjectDisplay" style="color: var(--accent); margin: 0 10px; font-weight: bold; font-family: monospace; font-size: 12px;"></span>
-        <button onclick="window.location.href='dashboard.html'" class="nav-btn">📂 Projekte</button>
-        
-        <div class="user-menu">
+        <div class="nav-left" style="display: flex; align-items: center; gap: 30px;">
+            <div class="brand" onclick="window.location.href='dashboard.html'"
+                style="cursor:pointer; display: flex; align-items: center; font-weight: 900; letter-spacing: 1px;">
+                <img src="assets/logo.png" alt="Logo" class="nav-icon">
+                VOXELIO
             </div>
 
-        <button onclick="saveCurrent()" class="nav-btn">☁️ Save</button>
-        
-        <div class="engine-controls" style="margin-left: 10px; display: flex; gap: 5px;">
-            <button class="btn run" onclick="App.run()" style="min-width: 80px;">START</button>
-            <button class="btn stop" onclick="App.stop()">STOP</button>
+            <div class="tab-bar">
+                <button id="btn-logic" class="tab-btn active" onclick="switchTab('logic')">Code Editor</button>
+                <button id="btn-texture" class="tab-btn" onclick="switchTab('texture')">Texture Painter</button>
+            </div>
+        </div>
+
+        <div class="actions" style="display: flex; align-items: center; gap: 10px;">
+            <span id="currentProjectDisplay"
+                style="color: var(--accent); margin: 0 10px; font-weight: bold; font-family: monospace; font-size: 12px;"></span>
+            <button onclick="window.location.href='dashboard.html'" class="nav-btn">📂 Projekte</button>
+
+            <div class="user-menu">
+            </div>
+
+            <button onclick="saveCurrent()" class="nav-btn">☁️ Save</button>
+
+            <div class="engine-controls" style="margin-left: 10px; display: flex; gap: 5px;">
+                <button class="btn run" onclick="App.run()" style="min-width: 80px;">START</button>
+                <button class="btn stop" onclick="App.stop()">STOP</button>
+            </div>
         </div>
     </div>
-</div>
     <div id="main-container">
         <div id="blocklyArea">
             <div id="blocklyDiv" style="position: absolute;"></div>
@@ -161,21 +163,39 @@
 
         <div id="textureEditor" style="display: none;">
             <div class="painter-layout">
+                <div class="painter-tools">
+                    <button class="tool-btn active" onclick="TextureEditor.setMode('paint', this)">✏️</button>
+                    <button class="tool-btn" onclick="TextureEditor.setMode('erase', this)">🧽</button>
+                    <button class="tool-btn" onclick="TextureEditor.setMode('fill', this)">🪣</button>
+                    <button class="tool-btn" onclick="TextureEditor.toggleMirror(this)" title="Symmetrie">🪞</button>
+                    <hr style="width:100%; border:0; border-top:1px solid var(--border)">
+                    <button class="tool-btn" onclick="TextureEditor.darken()">🌙</button>
+                    <button class="tool-btn" onclick="TextureEditor.brighten()">☀️</button>
+                </div>
+
                 <div class="canvas-card">
                     <canvas id="pixelCanvas" width="512" height="512"></canvas>
-                    <div class="tex-controls">
-                        <div class="tool-group">
-                            <button class="btn secondary" onclick="TextureEditor.setMode('paint')">✏️ Stift</button>
-                            <button class="btn secondary" onclick="TextureEditor.setMode('erase')">🧽 Radierer</button>
-                            <input type="color" id="paintColor" value="#4CFF00">
-                        </div>
-                        <div class="save-group">
-                            <input type="text" id="textureName" placeholder="Textur Name...">
-                            <button class="btn run" onclick="TextureEditor.save()">Speichern</button>
-                            <button class="btn stop" onclick="TextureEditor.clear()">Reset</button>
-                        </div>
+                    <div id="tex-status">> Pinsel aktiv.</div>
+                </div>
+
+                <div class="painter-settings">
+                    <div class="setting-group">
+                        <label>Farbe</label>
+                        <input type="color" id="paintColor" value="#4CFF00"
+                            style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer;">
                     </div>
-                    <div id="tex-status">> Bereit zum Zeichnen.</div>
+
+                    <div class="setting-group">
+                        <label>Textur Name</label>
+                        <input type="text" id="textureName" placeholder="Name..." class="nav-btn"
+                            style="text-align:left; background:#f8f9fa">
+                    </div>
+
+                    <div class="setting-group" style="margin-top:auto">
+                        <button class="btn run" onclick="TextureEditor.save()" style="width:100%">Speichern</button>
+                        <button class="btn stop" onclick="TextureEditor.clear()"
+                            style="width:100%; margin-top:5px;">Leeren</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -185,7 +205,7 @@
         <div id="sidePanel">
             <div id="statusTag">System Bereit</div>
             <div id="canvas3d" tabindex="0">
-                </div>
+            </div>
             <div class="panel-section">
                 <div class="section-header">
                     <span>SCRIPTS</span>
@@ -264,10 +284,21 @@
         </category>
     </xml>
 
-   <script>
+    <script>
+        
         let activeProjectName = "";
+        let hasChanges = false;
+        let autosaveTimer = null;
 
-        // Tab Management
+    
+        window.addEventListener('beforeunload', (e) => {
+            if (hasChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        
         function switchTab(tab) {
             const blocklyArea = document.getElementById('blocklyArea');
             const textureEditor = document.getElementById('textureEditor');
@@ -288,40 +319,67 @@
             }
         }
 
-        // Project Saving
-        function saveCurrent() {
-            if (activeProjectName) {
-                AuthHandler.saveToCloud(activeProjectName);
-            } else {
-                const name = prompt('Projekt unter diesem Namen speichern:', 'MeinProjekt');
-                if (name) {
-                    activeProjectName = name;
-                    document.getElementById('currentProjectDisplay').innerText = activeProjectName;
-                    AuthHandler.saveToCloud(name);
+        
+        function startGlobalAutosave() {
+            if (autosaveTimer) clearInterval(autosaveTimer);
+
+            autosaveTimer = setInterval(async () => {
+                if (hasChanges && activeProjectName) {
+                    console.log("☁️ Autosave wird ausgeführt...");
+                    await saveCurrent(true);
                 }
+            }, 5000); 
+        }
+        async function saveCurrent(isSilent = false) {
+            if (!activeProjectName) return;
+
+         
+            hasChanges = false;
+
+            try {
+                if (isSilent) {
+                    const cloudIcon = document.getElementById('save-status-cloud');
+                    if (cloudIcon) {
+                        cloudIcon.style.display = 'block';
+                        setTimeout(() => { cloudIcon.style.display = 'none'; }, 1500);
+                    }
+                }
+
+                if (window.AuthHandler) {
+                    
+                    await AuthHandler.saveToCloud(activeProjectName, isSilent);
+
+                    if (!isSilent) {
+                        
+                        alert("Projekt erfolgreich gespeichert!");
+                    }
+                }
+            } catch (err) {
+                
+                hasChanges = true;
+                console.error("Speicherfehler:", err);
+                if (!isSilent) alert("Fehler beim Speichern!");
             }
         }
 
-        // Initialize App on Load
-       window.addEventListener('load', () => {
+  
+        window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
             activeProjectName = params.get('project');
-            const isProjectNew = params.get('new') === 'true'; 
+            const isProjectNew = params.get('new') === 'true';
 
-            // PRÜFUNG: Wenn kein Projektname vorhanden ist -> Zurück zum Dashboard
             if (!activeProjectName) {
                 console.warn("Kein Projekt ausgewählt. Umleitung zum Dashboard...");
                 window.location.href = 'dashboard.html';
-                return; // Stoppt die weitere Ausführung
+                return;
             }
 
-            // Wenn ein Projekt da ist, fahre fort wie gewohnt
             document.getElementById('currentProjectDisplay').innerText = activeProjectName;
 
             const checkAuth = setInterval(() => {
                 if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
                     clearInterval(checkAuth);
-                    
+
                     if (isProjectNew) {
                         console.log("Erstelle neues Projekt...");
                         Editor.scripts = { "main": {} };
@@ -330,6 +388,28 @@
                     } else {
                         console.log("Lade existierendes Projekt...");
                         UI.loadFromCloud(activeProjectName);
+                    }
+
+                    
+                    startGlobalAutosave();
+
+                   
+                    if (window.workspace) {
+                        window.workspace.addChangeListener((e) => {
+                           
+                            if (e.isUiEvent) return;
+                            
+                            if (e.type === Blockly.Events.FINISHED_LOADING) return;
+                            
+                            if (e.type === Blockly.Events.BLOCK_CREATE ||
+                                e.type === Blockly.Events.BLOCK_DELETE ||
+                                e.type === Blockly.Events.BLOCK_CHANGE ||
+                                e.type === Blockly.Events.BLOCK_MOVE) {
+
+                                hasChanges = true;
+                                console.log("Änderung erkannt:", e.type);
+                            }
+                        });
                     }
                 }
             }, 500);
