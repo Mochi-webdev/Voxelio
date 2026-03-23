@@ -35,10 +35,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-    <script defer src="src/js/engine.js"></script>
-    <script defer src="src/js/textureEditor.js?v=2"></script>
-    <script defer src="src/js/blocks.js"></script>
-    <script defer src="src/js/authHandler.js"></script>
+    <script defer src="src/js/engine.js?v=5"></script>
+    <script defer src="src/js/textureEditor.js?v=5"></script>
+    <script defer src="src/js/blocks.js?v=5"></script>
+    <script defer src="src/js/authHandler.js?v=5"></script>
 
     <style>
         .user-menu {
@@ -235,18 +235,21 @@
             </div>
         </div>
     </div>
-
     <xml id="toolbox" style="display: none">
+
         <category name="Events" colour="#FFD500">
             <block type="event_flag"></block>
             <block type="event_key"></block>
             <block type="event_tick"></block>
+
         </category>
+
         <category name="Formen" colour="#4C97FF">
             <block type="create_shape"></block>
             <block type="set_texture"></block>
             <block type="create_group"></block>
         </category>
+
         <category name="Bewegung" colour="#5CB1D6">
             <block type="set_position"></block>
             <block type="move_object"></block>
@@ -255,6 +258,7 @@
             <block type="set_rotation"></block>
             <block type="rotate_forever"></block>
         </category>
+
         <category name="Steuerung" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>
@@ -262,26 +266,47 @@
             <block type="set_view_mode"></block>
             <block type="set_solid"></block>
         </category>
+
         <category name="Logik" colour="#5C81A6">
             <block type="logic_if"></block>
+            <block type="logic_if_else"></block>
             <block type="logic_compare"></block>
             <block type="logic_boolean"></block>
             <block type="is_touching"></block>
             <block type="ui_button_pressed"></block>
-            <block type="math_number"></block>
         </category>
-        <category name="UI" colour="#A55B80">
-            <block type="create_ui"></block>
-            <block type="set_ui_text"></block>
-            <block type="ui_animate"></block>
-            <block type="ui_hover_style"></block>
-            <block type="style_ui"></block>
-        </category>
+
         <category name="Variablen" colour="#FFAB19">
             <block type="init_var"></block>
             <block type="set_var"></block>
+            <block type="change_var"></block>
             <block type="get_var"></block>
+            <block type="display_var"></block>
         </category>
+
+        <category name="UI" colour="#A55B80">
+            <block type="create_ui"></block>
+            <block type="set_ui_text"></block>
+            <block type="set_ui_parent"></block>
+            <block type="remove_ui"></block>
+            <block type="ui_hover_style"></block>
+            <block type="style_ui"></block>
+        </category>
+
+        <category name="Text" colour="#5CB1D6">
+            <block type="text"></block>
+            <block type="text_join_simple"></block>
+        </category>
+
+        <category name="Zahlen & Farben" colour="#FFD500">
+            <block type="math_number"></block>
+            <block type="colour_picker_custom"></block>
+        </category>
+
+        <category name="Licht" colour="#FFD500">
+            <block type="set_light_intensity"></block>
+        </category>
+
     </xml>
 
     <script>
@@ -333,7 +358,7 @@
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
 
-            
+
             if (window.Editor && window.workspace) {
                 Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
             }
@@ -343,12 +368,12 @@
                     const cloudIcon = document.getElementById('save-status-cloud');
                     if (cloudIcon) {
                         cloudIcon.style.display = 'block';
-                       
+
                     }
                 }
 
                 if (window.AuthHandler) {
-                    
+
                     await AuthHandler.saveToCloud(activeProjectName, isSilent);
                     hasChanges = false;
                     console.log("✅ Speichern erfolgreich.");
@@ -382,35 +407,50 @@
             const checkAuth = setInterval(() => {
                 if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
                     clearInterval(checkAuth);
-
+                    // Suche diesen Teil in deinem window.onload oder Script-Bereich
                     if (isProjectNew) {
-                        console.log("Erstelle neues Projekt...");
-                        Editor.scripts = { "main": {} };
-                        Editor.renderList();
-                        AuthHandler.saveToCloud(activeProjectName, true);
+                        console.log("Creating new project...");
+
+                        // 1. Projektnamen sofort global setzen
+                        window.activeProjectName = activeProjectName;
+
+                        // 2. Datenstrukturen sauber aufsetzen
+                        window.Editor.scripts = { "Main": {} };
+                        window.Editor.currentScript = "Main";
+                        window.App.textures = {};
+
+                        // 3. UI rendern
+                        if (window.Editor.renderList) window.Editor.renderList();
+
+                        // 4. Erster Force-Save, damit es im Dashboard auftaucht
+                        setTimeout(async () => {
+                            if (window.AuthHandler && AuthHandler.user) {
+                                await window.AuthHandler.saveToCloud(window.activeProjectName, false);
+                                console.log("Initial save complete. Project should now be in Dashboard.");
+                            }
+                        }, 1500); // Etwas mehr Zeit geben, damit Firebase Auth stabil ist
                     } else {
-                        console.log("Lade existierendes Projekt...");
-                        UI.loadFromCloud(activeProjectName);
+                        window.UI.loadFromCloud(activeProjectName);
                     }
-
-
                     startGlobalAutosave();
-
 
                     if (window.workspace) {
                         window.workspace.addChangeListener((e) => {
-
                             if (e.isUiEvent) return;
-
                             if (e.type === Blockly.Events.FINISHED_LOADING) return;
 
-                            if (e.type === Blockly.Events.BLOCK_CREATE ||
-                                e.type === Blockly.Events.BLOCK_DELETE ||
-                                e.type === Blockly.Events.BLOCK_CHANGE ||
-                                e.type === Blockly.Events.BLOCK_MOVE) {
+                            // Liste der relevanten Änderungen
+                            const changeEvents = [
+                                Blockly.Events.BLOCK_CREATE,
+                                Blockly.Events.BLOCK_DELETE,
+                                Blockly.Events.BLOCK_CHANGE,
+                                Blockly.Events.BLOCK_MOVE,
+                                Blockly.Events.VAR_CREATE
+                            ];
 
+                            if (changeEvents.includes(e.type)) {
                                 hasChanges = true;
-                                console.log("Änderung erkannt:", e.type);
+                                console.log("Änderung für Autosave markiert.");
                             }
                         });
                     }

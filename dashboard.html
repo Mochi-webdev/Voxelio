@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Voxelio - Dashboard</title>
-    <link rel="stylesheet" href="src/dasboardstyle.css">
+    <link rel="stylesheet" href="src/dasboardstyle.css?v=1.0">
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -24,7 +24,7 @@
         }
     </script>
     
-    <script src="src/js/authHandler.js"></script>
+    <script src="src/js/authHandler.js?v=1.0"></script>
 </head>
 <body>
     <div class="top-nav">
@@ -112,46 +112,81 @@
             }
         }
 
-        // --- Projekte laden & Grid befüllen ---
-        firebase.auth().onAuthStateChanged(async (user) => {
-            const grid = document.getElementById('projectGrid');
-            if (user) {
-                grid.innerHTML = "<p>Lade deine Welten...</p>";
-                try {
-                    const snapshot = await firebase.firestore()
-                        .collection("users").doc(user.uid)
-                        .collection("projects")
-                        .orderBy("updatedAt", "desc") // Neueste zuerst
-                        .get();
-                    
-                    grid.innerHTML = "";
-                    if (snapshot.empty) {
-                        grid.innerHTML = "<p>Noch keine Projekte vorhanden. Erstelle dein erstes!</p>";
-                        return;
-                    }
-
-                    snapshot.forEach(doc => {
-                        const div = document.createElement('div');
-                        div.className = 'project-card';
-                        div.innerHTML = `
-                            <h3>${doc.id}</h3>
-                            <div class="card-footer">
-                                <button class="open-btn" onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>
-                                <button class="delete-btn" onclick="deleteProject('${doc.id}')" title="Projekt löschen">
-                                    🗑️
-                                </button>
-                            </div>
-                        `;
-                        grid.appendChild(div);
-                    });
-                } catch (e) {
-                    console.error("Fehler beim Laden:", e);
-                    grid.innerHTML = "<p>Fehler beim Laden der Projekte. Bitte Seite neu laden.</p>";
-                }
-            } else {
-                grid.innerHTML = "<p>Bitte logge dich ein, um deine Projekte zu sehen.</p>";
+       // --- Projekte laden & Grid befüllen ---
+firebase.auth().onAuthStateChanged(async (user) => {
+    const grid = document.getElementById('projectGrid');
+    if (user) {
+        grid.innerHTML = "<p>Lade deine Welten...</p>";
+        try {
+            // FIX: Wir fragen nach 'lastUpdated' (wie in authHandler definiert)
+            // Falls 'lastUpdated' noch nicht überall existiert, nutzen wir einen Fallback
+            const snapshot = await firebase.firestore()
+                .collection("users").doc(user.uid)
+                .collection("projects")
+                .orderBy("lastUpdated", "desc") 
+                .get();
+            
+            grid.innerHTML = "";
+            
+            if (snapshot.empty) {
+                grid.innerHTML = "<p>Noch keine Projekte vorhanden. Erstelle dein erstes!</p>";
+                return;
             }
-        });
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const div = document.createElement('div');
+                div.className = 'project-card';
+                
+                // Wir holen uns eine Vorschau-Textur, falls vorhanden
+                let previewImg = "";
+                if (data.textures && Object.keys(data.textures).length > 0) {
+                    const firstTex = Object.values(data.textures)[0];
+                    previewImg = `<img src="${firstTex}" style="width:100%; height:100px; object-fit:contain; margin-bottom:10px; border-radius:4px; background:#333;">`;
+                }
+
+                div.innerHTML = `
+                    ${previewImg}
+                    <h3>${doc.id}</h3>
+                    <div class="card-footer">
+                        <button class="open-btn" onclick="window.location.href='index.html?project=${encodeURIComponent(doc.id)}'">Öffnen</button>
+                        <button class="delete-btn" onclick="deleteProject('${doc.id}')" title="Projekt löschen">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        } catch (e) {
+            console.error("Fehler beim Laden:", e);
+            // Falls der Index für lastUpdated noch fehlt, laden wir ohne Sortierung
+            if (e.message.includes("index")) {
+                loadWithoutIndex(user.uid);
+            } else {
+                grid.innerHTML = "<p>Fehler beim Laden. Bitte Seite neu laden.</p>";
+            }
+        }
+    } else {
+        grid.innerHTML = "<p>Bitte logge dich ein, um deine Projekte zu sehen.</p>";
+    }
+});
+
+// Fallback-Funktion falls Firestore-Index noch generiert wird
+async function loadWithoutIndex(uid) {
+    const grid = document.getElementById('projectGrid');
+    const snapshot = await firebase.firestore()
+        .collection("users").doc(uid)
+        .collection("projects")
+        .get();
+    
+    grid.innerHTML = "";
+    snapshot.forEach(doc => {
+        const div = document.createElement('div');
+        div.className = 'project-card';
+        div.innerHTML = `<h3>${doc.id}</h3><button onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>`;
+        grid.appendChild(div);
+    });
+}
     </script>
 </body>
 </html>

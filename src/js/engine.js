@@ -664,41 +664,53 @@ window.switchTab = function (tab) {
 };
 
 window.UI = {
-
-    async loadFromCloud(projectName) {
-        if (!AuthHandler.user) return;
+    loadFromCloud: async function(projectName) {
+        if (!window.AuthHandler || !AuthHandler.user) return;
 
         try {
             const doc = await firebase.firestore()
-                .collection("users").doc(AuthHandler.user.uid)
-                .collection("projects").doc(projectName)
+                .collection('users')
+                .doc(AuthHandler.user.uid)
+                .collection('projects')
+                .doc(projectName)
                 .get();
 
             if (doc.exists) {
                 const data = doc.data();
 
-
-                if (data.allTextures) {
-                    window.App.textures = JSON.parse(data.allTextures);
-                    console.log("✅ Texturen geladen:", Object.keys(window.App.textures));
+                if (data.textures) {
+                    window.App.textures = data.textures;
                 }
 
+                if (data.scripts) {
+                    try {
+                        if (typeof data.scripts === 'string') {
+                            const decoded = decodeURIComponent(escape(atob(data.scripts)));
+                            window.Editor.scripts = JSON.parse(decoded);
+                        } else {
+                            window.Editor.scripts = data.scripts;
+                        }
+                    } catch (e) {
+                        window.Editor.scripts = { "Main": {} };
+                    }
+                }
 
-                if (data.allScripts) {
-                    window.Editor.scripts = JSON.parse(data.allScripts);
-                    window.Editor.renderList();
+                const scriptNames = Object.keys(window.Editor.scripts);
+                const scriptToLoad = scriptNames.includes("Main") ? "Main" : scriptNames[0];
+                window.Editor.currentScript = scriptToLoad;
 
-                    if (window.Editor.scripts[window.Editor.currentScript] && window.workspace) {
+                if (window.Editor.renderList) window.Editor.renderList();
 
-                        Blockly.serialization.workspaces.load(
-                            window.Editor.scripts[window.Editor.currentScript],
-                            window.workspace
-                        );
+                if (window.workspace) {
+                    window.workspace.clear();
+                    const savedBlocks = window.Editor.scripts[scriptToLoad];
+                    if (savedBlocks && Object.keys(savedBlocks).length > 0) {
+                        Blockly.serialization.workspaces.load(savedBlocks, window.workspace);
                     }
                 }
             }
         } catch (e) {
-            console.error("Fehler beim Laden:", e);
+            console.error(e);
         }
     }
 };

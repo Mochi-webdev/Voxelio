@@ -101,7 +101,7 @@ window.TextureEditor = {
         }
     },
 
-    async save() {
+   async save() {
         const nameInput = document.getElementById('textureName');
         const name = nameInput ? nameInput.value.trim() : "";
         
@@ -112,19 +112,20 @@ window.TextureEditor = {
         
         this.setStatus("Speichere...");
 
+       
         if (!window.App.textures) window.App.textures = {};
         window.App.textures[name] = this.canvas.toDataURL(); 
         
-       
+        window.hasChanges = true;
+
         if(window.AuthHandler && window.activeProjectName) {
             try {
-                await AuthHandler.saveToCloud(window.activeProjectName, true);
-                this.setStatus(`'${name}' in Cloud gesichert!`);
                 
-               
-                if (window.workspace && Blockly.mainWorkspace) {
-                 
-                    Blockly.mainWorkspace.getToolbox().refreshSelection();
+                await AuthHandler.saveToCloud(window.activeProjectName, true);
+                this.setStatus(`'${name}' gesichert!`);
+                
+                if (window.Editor && typeof Editor.renderList === "function") {
+                    Editor.renderList(); 
                 }
             } catch (err) {
                 this.setStatus("Cloud-Fehler!", true);
@@ -133,6 +134,19 @@ window.TextureEditor = {
         } else {
             this.setStatus("Lokal gespeichert.");
         }
-    }
+    },
+    loadTexture: function(name) {
+        if (!window.App.textures || !window.App.textures[name]) return;
+        
+        const img = new Image();
+        img.onload = () => {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+            document.getElementById('textureName').value = name;
+            this.setStatus(`Textur '${name}' geladen.`);
+        };
+        img.src = window.App.textures[name];
+    },
+    
 };
 window.addEventListener('load', () => TextureEditor.init());

@@ -52,33 +52,47 @@ window.AuthHandler = {
      * @param {boolean} isAutosave - Wenn true, erscheint kein Alert
      */
     saveToCloud: async function (projectName, silent = false) {
-        if (!this.user) return;
+        const targetProject = projectName || window.activeProjectName;
+        if (!this.user || !targetProject) return;
 
-        if (window.workspace && window.Editor && Editor.currentScript) {
-          
-            Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
+        if (window.workspace && window.Editor && window.Editor.currentScript) {
+            try {
+                const state = Blockly.serialization.workspaces.save(window.workspace);
+                window.Editor.scripts[window.Editor.currentScript] = state || {};
+            } catch (e) {
+                console.error(e);
+            }
         }
 
-       
-        const projectData = {
-            scripts: Editor.scripts,
-            textures: (window.App && window.App.textures) ? window.App.textures : {},
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        const encodeData = (obj) => {
+            try {
+                // Sicherstellen, dass wir mindestens ein leeres Main-Script haben
+                const dataToEncode = (obj && Object.keys(obj).length > 0) ? obj : { "Main": {} };
+                const json = JSON.stringify(dataToEncode);
+                return btoa(unescape(encodeURIComponent(json)));
+            } catch (e) {
+                return btoa("{}");
+            }
         };
 
-      
+        const projectData = {
+            scripts: encodeData(window.Editor.scripts),
+            textures: window.App.textures || {},
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            projectName: targetProject // Hilfreich für das Dashboard
+        };
+
         try {
             await firebase.firestore()
                 .collection('users')
                 .doc(this.user.uid)
                 .collection('projects')
-                .doc(projectName)
+                .doc(targetProject)
                 .set(projectData, { merge: true });
 
-            console.log(` Projekt "${projectName}" gespeichert.`);
+            if (!silent) console.log("Cloud Save: OK");
         } catch (error) {
-            console.error("Fehler beim Cloud-Speichern:", error);
-            throw error; 
+            console.error("Cloud Save Error:", error);
         }
     }
 };
