@@ -11,7 +11,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
+    <script src="src/js/projectHandler.js"></script>
+    <script>
+        window.addEventListener('load', () => {
+           
+            ProjectHandler.checkAndImportShare();
+        });
+    </script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyD4CUiHx0GhixnFp76V5zFR2s49ETOYpwQ",
@@ -395,6 +401,7 @@
             const params = new URLSearchParams(window.location.search);
             activeProjectName = params.get('project');
             const isProjectNew = params.get('new') === 'true';
+            
 
             if (!activeProjectName) {
                 console.warn("Kein Projekt ausgewählt. Umleitung zum Dashboard...");

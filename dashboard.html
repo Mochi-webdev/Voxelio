@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Voxelio - Dashboard</title>
-    <link rel="stylesheet" href="src/dasboardstyle.css?v=1.0">
+    <link rel="stylesheet" href="src/dasboardstyle.css?v=1.2">
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -25,6 +25,14 @@
     </script>
     
     <script src="src/js/authHandler.js?v=1.0"></script>
+    <script src="src/js/projectHandler.js?v=1.0"></script>
+
+    <style>
+        .section-divider { border: 0; height: 1px; background: rgba(255,255,255,0.1); margin: 40px 0; }
+        .btn-group { display: flex; gap: 5px; }
+        .share-btn { background: #4a4a4a; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .share-btn:hover { background: #666; }
+    </style>
 </head>
 <body>
     <div class="top-nav">
@@ -45,9 +53,21 @@
     </div>
 
     <div class="dashboard-content">
-        <h2>Deine Projekte</h2>
+        <div class="section-header">
+            <h2>Meine Projekte</h2>
+        </div>
         <div id="projectGrid" class="project-grid">
-            </div>
+            <p>Lade eigene Projekte...</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-header">
+            <h2>Für mich freigegeben</h2>
+        </div>
+        <div id="sharedGrid" class="project-grid">
+            <p>Lade freigegebene Projekte...</p>
+        </div>
     </div>
 
     <div id="projectModal" class="modal">
@@ -84,109 +104,101 @@
             }
         }
 
-        // Modal schließen wenn man außerhalb klickt
         window.onclick = function(event) {
             const modal = document.getElementById('projectModal');
             if (event.target == modal) closeModal();
         }
 
-        // --- Projekt löschen Funktion ---
+        // --- Hilfsfunktion zum Öffnen von Projekten (auch fremde) ---
+        function openProject(ownerUid, projectId) {
+            window.location.href = `index.html?project=${encodeURIComponent(projectId)}&owner=${ownerUid}`;
+        }
+
+        // --- Projekt löschen ---
         async function deleteProject(projectId) {
-            if (confirm(`Möchtest du das Projekt "${projectId}" wirklich unwiderruflich löschen?`)) {
+            if (confirm(`Projekt "${projectId}" wirklich löschen?`)) {
                 const user = firebase.auth().currentUser;
                 if (!user) return;
-
                 try {
                     await firebase.firestore()
                         .collection("users").doc(user.uid)
                         .collection("projects").doc(projectId)
                         .delete();
-                    
-                    // Grid nach dem Löschen aktualisieren
-                    console.log(`Projekt ${projectId} gelöscht.`);
                     location.reload(); 
                 } catch (e) {
-                    console.error("Fehler beim Löschen:", e);
-                    alert("Fehler beim Löschen: " + e.message);
+                    console.error(e);
                 }
             }
         }
 
-       // --- Projekte laden & Grid befüllen ---
-firebase.auth().onAuthStateChanged(async (user) => {
-    const grid = document.getElementById('projectGrid');
-    if (user) {
-        grid.innerHTML = "<p>Lade deine Welten...</p>";
-        try {
-            // FIX: Wir fragen nach 'lastUpdated' (wie in authHandler definiert)
-            // Falls 'lastUpdated' noch nicht überall existiert, nutzen wir einen Fallback
-            const snapshot = await firebase.firestore()
-                .collection("users").doc(user.uid)
-                .collection("projects")
-                .orderBy("lastUpdated", "desc") 
-                .get();
+        // --- Hauptlogik: Projekte laden ---
+        firebase.auth().onAuthStateChanged(async (user) => {
+            const grid = document.getElementById('projectGrid');
+            const sharedGrid = document.getElementById('sharedGrid');
             
-            grid.innerHTML = "";
-            
+            if (user) {
+                // 1. Eigene Projekte laden
+                try {
+                    const ownSnapshot = await firebase.firestore()
+                        .collection("users").doc(user.uid)
+                        .collection("projects")
+                        .orderBy("lastUpdated", "desc")
+                        .get();
+                    
+                    renderGrid(ownSnapshot, grid, true, user.uid);
+                } catch (e) {
+                    console.error("Fehler eigene Projekte:", e);
+                    grid.innerHTML = "<p>Fehler beim Laden.</p>";
+                }
+
+                // 2. Geteilte Projekte laden (CollectionGroup)
+                try {
+                    const sharedSnapshot = await firebase.firestore()
+                        .collectionGroup("projects")
+                        .where("sharedWith", "array-contains", user.email.toLowerCase())
+                        .get();
+                    
+                    renderGrid(sharedSnapshot, sharedGrid, false, user.uid);
+                } catch (e) {
+                    console.error("Fehler geteilte Projekte:", e);
+                    sharedGrid.innerHTML = "<p>Noch keine freigegebenen Projekte gefunden.</p>";
+                }
+            } else {
+                grid.innerHTML = "<p>Bitte logge dich ein.</p>";
+                sharedGrid.innerHTML = "";
+            }
+        });
+
+        function renderGrid(snapshot, container, isOwner, currentUserUid) {
+            container.innerHTML = "";
             if (snapshot.empty) {
-                grid.innerHTML = "<p>Noch keine Projekte vorhanden. Erstelle dein erstes!</p>";
+                container.innerHTML = isOwner ? "<p>Keine eigenen Projekte.</p>" : "<p>Keine geteilten Projekte.</p>";
                 return;
             }
 
             snapshot.forEach(doc => {
                 const data = doc.data();
-                const div = document.createElement('div');
-                div.className = 'project-card';
-                
-                // Wir holen uns eine Vorschau-Textur, falls vorhanden
-                let previewImg = "";
-                if (data.textures && Object.keys(data.textures).length > 0) {
-                    const firstTex = Object.values(data.textures)[0];
-                    previewImg = `<img src="${firstTex}" style="width:100%; height:100px; object-fit:contain; margin-bottom:10px; border-radius:4px; background:#333;">`;
-                }
+                const projectId = doc.id;
+                // UID des Besitzers extrahieren (Dokument-Pfad ist users/{uid}/projects/{id})
+                const ownerUid = doc.ref.parent.parent.id;
 
-                div.innerHTML = `
-                    ${previewImg}
-                    <h3>${doc.id}</h3>
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.innerHTML = `
+                    <h3>${projectId}</h3>
                     <div class="card-footer">
-                        <button class="open-btn" onclick="window.location.href='index.html?project=${encodeURIComponent(doc.id)}'">Öffnen</button>
-                        <button class="delete-btn" onclick="deleteProject('${doc.id}')" title="Projekt löschen">
-                            🗑️
-                        </button>
+                        <button class="open-btn" onclick="openProject('${ownerUid}', '${projectId}')">Öffnen</button>
+                        <div class="btn-group">
+                            ${isOwner ? `
+                                <button class="share-btn" onclick="ProjectHandler.shareWithEmail('${projectId}')" title="Per E-Mail teilen">📧</button>
+                                <button class="delete-btn" onclick="deleteProject('${projectId}')">🗑️</button>
+                            ` : `<small>Von: ${ownerUid === currentUserUid ? 'Dir' : 'Anderem User'}</small>`}
+                        </div>
                     </div>
                 `;
-                grid.appendChild(div);
+                container.appendChild(card);
             });
-        } catch (e) {
-            console.error("Fehler beim Laden:", e);
-            // Falls der Index für lastUpdated noch fehlt, laden wir ohne Sortierung
-            if (e.message.includes("index")) {
-                loadWithoutIndex(user.uid);
-            } else {
-                grid.innerHTML = "<p>Fehler beim Laden. Bitte Seite neu laden.</p>";
-            }
         }
-    } else {
-        grid.innerHTML = "<p>Bitte logge dich ein, um deine Projekte zu sehen.</p>";
-    }
-});
-
-// Fallback-Funktion falls Firestore-Index noch generiert wird
-async function loadWithoutIndex(uid) {
-    const grid = document.getElementById('projectGrid');
-    const snapshot = await firebase.firestore()
-        .collection("users").doc(uid)
-        .collection("projects")
-        .get();
-    
-    grid.innerHTML = "";
-    snapshot.forEach(doc => {
-        const div = document.createElement('div');
-        div.className = 'project-card';
-        div.innerHTML = `<h3>${doc.id}</h3><button onclick="window.location.href='index.html?project=${doc.id}'">Öffnen</button>`;
-        grid.appendChild(div);
-    });
-}
     </script>
 </body>
 </html>
