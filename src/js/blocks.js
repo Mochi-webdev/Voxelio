@@ -161,6 +161,17 @@ Blockly.Blocks['ui_hover_style'] = {
         this.setColour(260);
     }
 };
+Blockly.Blocks['set_skybox_texture'] = {
+  init: function() {
+    this.appendValueInput("TEXTURE")
+        .setCheck("String")
+        .appendField("Setze Skybox Textur auf");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Ändert den Hintergrund der Welt zu einer deiner Texturen.");
+  }
+};
 
 // --- GENERATORS ---
 
@@ -235,6 +246,15 @@ javascriptGenerator.forBlock['ui_hover_style'] = function (block) {
     const scale = block.getFieldValue('SCALE');
     const bright = block.getFieldValue('BRIGHT');
     return `App.setHoverEffect('${id}', ${scale}, ${bright});\n`;
+};
+javascriptGenerator.forBlock['set_skybox_texture'] = function(block, generator) {
+ 
+  var value_texture = generator.valueToCode(block, 'TEXTURE', javascriptGenerator.ORDER_ATOMIC);
+  
+  
+  if (!value_texture) value_texture = "''";
+
+  return `App.setSkybox(${value_texture});\n`;
 };
 
 window.Editor = {

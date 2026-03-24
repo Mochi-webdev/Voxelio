@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="src/js/projectHandler.js"></script>
- 
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyD4CUiHx0GhixnFp76V5zFR2s49ETOYpwQ",
@@ -304,8 +304,15 @@
             <block type="colour_picker_custom"></block>
         </category>
 
-        <category name="Licht" colour="#FFD500">
+        <category name="Umgebung" colour="#FFD500">
             <block type="set_light_intensity"></block>
+            <block type="set_skybox_texture">
+                <value name="TEXTURE">
+                    <block type="text">
+                        <field name="TEXT">MeineTextur1</field>
+                    </block>
+                </value>
+            </block>
         </category>
 
     </xml>
@@ -392,58 +399,58 @@
         }
 
 
-       window.addEventListener('load', () => {
-    const params = new URLSearchParams(window.location.search);
-    activeProjectName = params.get('project');
-    const isProjectNew = params.get('new') === 'true';
-    
-    // NEU: Den Besitzer aus der URL auslesen (für geteilte Projekte)
-    const projectOwner = params.get('owner');
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            activeProjectName = params.get('project');
+            const isProjectNew = params.get('new') === 'true';
 
-    if (!activeProjectName) {
-        console.warn("Kein Projekt ausgewählt. Umleitung zum Dashboard...");
-        window.location.href = 'dashboard.html';
-        return;
-    }
+            // NEU: Den Besitzer aus der URL auslesen (für geteilte Projekte)
+            const projectOwner = params.get('owner');
 
-    document.getElementById('currentProjectDisplay').innerText = activeProjectName;
+            if (!activeProjectName) {
+                console.warn("Kein Projekt ausgewählt. Umleitung zum Dashboard...");
+                window.location.href = 'dashboard.html';
+                return;
+            }
 
-    const checkAuth = setInterval(() => {
-        // Wir warten, bis alle Handler bereit sind
-        if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
-            clearInterval(checkAuth);
-            
-            if (isProjectNew) {
-                console.log("Erstelle neues Projekt...");
-                window.activeProjectName = activeProjectName;
-                window.Editor.scripts = { "Main": {} };
-                window.Editor.currentScript = "Main";
-                window.App.textures = {};
-                if (window.Editor.renderList) window.Editor.renderList();
+            document.getElementById('currentProjectDisplay').innerText = activeProjectName;
 
-                setTimeout(async () => {
-                    if (window.AuthHandler && AuthHandler.user) {
-                        await window.AuthHandler.saveToCloud(window.activeProjectName, false);
+            const checkAuth = setInterval(() => {
+                // Wir warten, bis alle Handler bereit sind
+                if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
+                    clearInterval(checkAuth);
+
+                    if (isProjectNew) {
+                        console.log("Erstelle neues Projekt...");
+                        window.activeProjectName = activeProjectName;
+                        window.Editor.scripts = { "Main": {} };
+                        window.Editor.currentScript = "Main";
+                        window.App.textures = {};
+                        if (window.Editor.renderList) window.Editor.renderList();
+
+                        setTimeout(async () => {
+                            if (window.AuthHandler && AuthHandler.user) {
+                                await window.AuthHandler.saveToCloud(window.activeProjectName, false);
+                            }
+                        }, 1500);
+                    } else {
+                        // NEU: UI.loadFromCloud wird jetzt mit dem owner aufgerufen, falls vorhanden
+                        // Wenn kein owner da ist, nutzt die Funktion automatisch die eigene UID
+                        window.UI.loadFromCloud(activeProjectName, projectOwner);
                     }
-                }, 1500);
-            } else {
-                // NEU: UI.loadFromCloud wird jetzt mit dem owner aufgerufen, falls vorhanden
-                // Wenn kein owner da ist, nutzt die Funktion automatisch die eigene UID
-                window.UI.loadFromCloud(activeProjectName, projectOwner);
-            }
-            
-            startGlobalAutosave();
 
-            // Blockly Change Listener (bestehend lassen...)
-            if (window.workspace) {
-                window.workspace.addChangeListener((e) => {
-                    if (e.isUiEvent || e.type === Blockly.Events.FINISHED_LOADING) return;
-                    hasChanges = true;
-                });
-            }
-        }
-    }, 500);
-});
+                    startGlobalAutosave();
+
+                    // Blockly Change Listener (bestehend lassen...)
+                    if (window.workspace) {
+                        window.workspace.addChangeListener((e) => {
+                            if (e.isUiEvent || e.type === Blockly.Events.FINISHED_LOADING) return;
+                            hasChanges = true;
+                        });
+                    }
+                }
+            }, 500);
+        });
     </script>
 
 </body>

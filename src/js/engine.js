@@ -19,6 +19,7 @@ window.Editor = {
             list.appendChild(btn);
         });
     },
+    
 
     switchScript(name) {
         if (!window.workspace) return;
@@ -457,6 +458,23 @@ window.App = {
                 obj.material.needsUpdate = true;
             });
         }
+    },
+    setSkybox: function(textureName) {
+        if (!this.textures || !this.textures[textureName]) {
+            console.warn("Skybox-Fehler: Textur '" + textureName + "' nicht gefunden.");
+            return;
+        }
+
+        const loader = new THREE.TextureLoader();
+        // Hole die Base64-Daten der Textur aus deinem Speicher
+        const textureData = this.textures[textureName];
+
+        loader.load(textureData, (texture) => {
+            // Three.js Skybox Logik
+            texture.mapping = THREE.EquirectangularReflectionMapping; 
+            this.scene.background = texture;
+            console.log("Skybox aktualisiert: " + textureName);
+        });
     },
 
 
