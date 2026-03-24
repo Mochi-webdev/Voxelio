@@ -172,6 +172,18 @@ Blockly.Blocks['set_skybox_texture'] = {
     this.setTooltip("Ändert den Hintergrund der Welt zu einer deiner Texturen.");
   }
 };
+Blockly.Blocks['set_floor_texture'] = {
+  init: function() {
+    this.appendValueInput("TEXTURE")
+        .setCheck("String")
+        .appendField("Setze Boden-Textur auf");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(160); // Eine andere Farbe zur Unterscheidung
+    this.setTooltip("Ändert das Aussehen des Bodens.");
+  }
+};
+
 
 // --- GENERATORS ---
 
@@ -240,7 +252,10 @@ javascriptGenerator.forBlock['ui_animate'] = function (block) {
     const effect = block.getFieldValue('EFFECT');
     return `App.animateUI('${id}', '${effect}');\n`;
 };
-
+javascriptGenerator.forBlock['set_floor_texture'] = function(block, generator) {
+  var value_texture = generator.valueToCode(block, 'TEXTURE', javascriptGenerator.ORDER_ATOMIC) || "''";
+  return `App.setFloor(${value_texture});\n`;
+};
 javascriptGenerator.forBlock['ui_hover_style'] = function (block) {
     const id = block.getFieldValue('ID');
     const scale = block.getFieldValue('SCALE');

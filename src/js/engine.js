@@ -19,7 +19,7 @@ window.Editor = {
             list.appendChild(btn);
         });
     },
-    
+
 
     switchScript(name) {
         if (!window.workspace) return;
@@ -75,6 +75,16 @@ window.App = {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(c.clientWidth, c.clientHeight);
         c.appendChild(this.renderer.domElement);
+        // In deiner engine.js (innerhalb der init-Funktion)
+        const geometry = new THREE.PlaneGeometry(100, 100);
+        const material = new THREE.MeshStandardMaterial({ color: 0x808080 });
+        const floor = new THREE.Mesh(geometry, material);
+
+        floor.rotation.x = -Math.PI / 2; // Flach hinlegen
+        floor.receiveShadow = true;
+        floor.name = "mainFloor"; // WICHTIG: Damit wir ihn finden
+        this.scene.add(floor);
+        this.floor = floor; // Referenz im App-Objekt speichern
 
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         let l = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -387,6 +397,48 @@ window.App = {
             this.fpcPlayer.position.add(moveVec);
         }
     },
+    toggleFullscreen: function (enable) {
+    const panel = document.getElementById('sidePanel');
+    const resizer = document.getElementById('resizer');
+    
+    // Die beiden Buttons holen
+    const btnMax = document.getElementById('goFullscreen');
+    const btnMin = document.getElementById('exitFullscreen');
+
+    if (enable) {
+        panel.classList.add('fullscreen');
+        if (resizer) resizer.style.display = 'none';
+        
+        // Buttons umschalten
+        if (btnMax) btnMax.style.display = 'none';
+        if (btnMin) btnMin.style.display = 'block';
+    } else {
+        panel.classList.remove('fullscreen');
+        if (resizer) resizer.style.display = 'block';
+        
+        // Buttons umschalten
+        if (btnMax) btnMax.style.display = 'block';
+        if (btnMin) btnMin.style.display = 'none';
+    }
+
+    // Three.js Resize auslösen
+    setTimeout(() => {
+        this.onWindowResize();
+    }, 100);
+},
+
+    // Hilfsfunktion für das Resize (sollte in deiner engine.js sein)
+    onWindowResize: function () {
+        if (!this.camera || !this.renderer) return;
+
+        const container = document.getElementById('canvas3d');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    },
 
     variableDisplays: {},
 
@@ -459,7 +511,7 @@ window.App = {
             });
         }
     },
-    setSkybox: function(textureName) {
+    setSkybox: function (textureName) {
         if (!this.textures || !this.textures[textureName]) {
             console.warn("Skybox-Fehler: Textur '" + textureName + "' nicht gefunden.");
             return;
@@ -471,9 +523,41 @@ window.App = {
 
         loader.load(textureData, (texture) => {
             // Three.js Skybox Logik
-            texture.mapping = THREE.EquirectangularReflectionMapping; 
+            texture.mapping = THREE.EquirectangularReflectionMapping;
             this.scene.background = texture;
             console.log("Skybox aktualisiert: " + textureName);
+        });
+    },
+    setFloor: function (textureName) {
+        // 1. Sicherheitcheck: Existiert die Textur?
+        if (!this.textures || !this.textures[textureName]) {
+            console.error("Boden-Fehler: Textur '" + textureName + "' nicht gefunden.");
+            return;
+        }
+
+        // 2. Suche das Boden-Objekt in deiner Szene
+        // Falls du keine 'this.floor' Variable hast, suchen wir nach dem Namen
+        const ground = this.floor || this.scene.getObjectByName("ground");
+
+        if (!ground) {
+            console.warn("Kein Boden-Objekt in der Szene gefunden!");
+            return;
+        }
+
+        // 3. Textur laden und zuweisen
+        const loader = new THREE.TextureLoader();
+        loader.load(this.textures[textureName], (texture) => {
+            // Einstellungen für Kachelung (Wiederholung der Textur)
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(10, 10); // Wie oft die Textur wiederholt wird
+
+            // Dem Material zuweisen
+            if (ground.material) {
+                ground.material.map = texture;
+                ground.material.needsUpdate = true;
+            }
+            console.log("Boden-Textur geändert zu:", textureName);
         });
     },
 

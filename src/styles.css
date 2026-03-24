@@ -472,3 +472,25 @@ body {
 .logout-btn:hover {
     background: #fff5f5;
 }
+/* CSS für den Fullscreen */
+#sidePanel.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10000;
+    background: #000;
+}
+
+#sidePanel.fullscreen #canvas3d {
+    width: 100%;
+    height: 100%;
+}
+
+
+#sidePanel.fullscreen .panel-section, 
+#sidePanel.fullscreen #statusTag,
+#sidePanel.fullscreen #log {
+    display: none;
+}
