@@ -14,14 +14,14 @@
     <script src="src/js/projectHandler.js"></script>
 
     <script>
-     const firebaseConfig = {
-    apiKey: "FIREBASE_API_KEY_PLACEHOLDER",
-    authDomain: "FIREBASE_AUTH_DOMAIN_PLACEHOLDER",
-    projectId: "FIREBASE_PROJECT_ID_PLACEHOLDER",
-    storageBucket: "FIREBASE_STORAGE_BUCKET_PLACEHOLDER",
-    messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER",
-    appId: "FIREBASE_APP_ID_PLACEHOLDER"
-};
+        const firebaseConfig = {
+            apiKey: "FIREBASE_API_KEY_PLACEHOLDER",
+            authDomain: "FIREBASE_AUTH_DOMAIN_PLACEHOLDER",
+            projectId: "FIREBASE_PROJECT_ID_PLACEHOLDER",
+            storageBucket: "FIREBASE_STORAGE_BUCKET_PLACEHOLDER",
+            messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER",
+            appId: "FIREBASE_APP_ID_PLACEHOLDER"
+        };
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
@@ -310,6 +310,18 @@
             <block type="math_number"></block>
             <block type="colour_picker_custom"></block>
             <block type="get_matrix_value"></block>
+            <block type="get_random_number">
+                <value name="MIN">
+                    <block type="math_number">
+                        <field name="NUM">1</field>
+                    </block>
+                </value>
+                <value name="MAX">
+                    <block type="math_number">
+                        <field name="NUM">10</field>
+                    </block>
+                </value>
+            </block>
         </category>
 
         <category name="Umgebung" colour="#FFD500">
