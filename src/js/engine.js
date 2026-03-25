@@ -739,6 +739,33 @@ window.App = {
             el.style.padding = props.padding + "px";
         }
     },
+    velocityy: 0,      // Vertikale Geschwindigkeit
+    isGrounded: true,  // Prüft, ob der Spieler den Boden berührt
+    gravity: -0.015,   // Wie stark die Schwerkraft zieht
+
+    jump: function(force) {
+        if (this.isGrounded) {
+            this.velocityy = parseFloat(force);
+            this.isGrounded = false;
+            console.log("Sprung!");
+        }
+    },
+
+    // Diese Logik muss in deine animate() Funktion, damit der Spieler fällt
+    updatePhysics: function() {
+        if (!this.fpcPlayer || !this.isRunning) return;
+
+        // Schwerkraft anwenden
+        this.velocityy += this.gravity;
+        this.fpcPlayer.position.y += this.velocityy;
+
+        // Boden-Kollision (einfache Variante: Boden ist bei y=0)
+        if (this.fpcPlayer.position.y <= 0) {
+            this.fpcPlayer.position.y = 0;
+            this.velocityy = 0;
+            this.isGrounded = true;
+        }
+    },
 };
 
 window.addEventListener('load', () => App.init());

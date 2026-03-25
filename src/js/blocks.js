@@ -183,6 +183,17 @@ Blockly.Blocks['set_floor_texture'] = {
     this.setTooltip("Ändert das Aussehen des Bodens.");
   }
 };
+Blockly.Blocks['player_jump'] = {
+  init: function() {
+    this.appendValueInput("FORCE")
+        .setCheck("Number")
+        .appendField("Springe mit Kraft");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(259);
+    this.setTooltip("Lässt den Spieler springen, wenn er auf dem Boden steht.");
+  }
+};
 
 
 // --- GENERATORS ---
@@ -270,6 +281,10 @@ javascriptGenerator.forBlock['set_skybox_texture'] = function(block, generator) 
   if (!value_texture) value_texture = "''";
 
   return `App.setSkybox(${value_texture});\n`;
+};
+javascriptGenerator.forBlock['player_jump'] = function(block, generator) {
+  var value_force = generator.valueToCode(block, 'FORCE', javascriptGenerator.ORDER_ATOMIC) || "0.3";
+  return `App.jump(${value_force});\n`;
 };
 
 window.Editor = {
