@@ -220,7 +220,8 @@ Blockly.Blocks['get_random_number'] = {
         .appendField("bis");
     this.setOutput(true, "Number");
     this.setColour(230);
-    this.setTooltip("Generiert eine zufällige Zahl zwischen den beiden Werten.");
+    this.setTooltip("Generiert eine ganze Zahl zwischen Min und Max.");
+    this.setHelpUrl("");
   }
 };
 
@@ -328,17 +329,12 @@ javascriptGenerator.forBlock['get_matrix_value'] = function(block, generator) {
   return [code, javascriptGenerator.ORDER_FUNCTION_CALL];
 };
 javascriptGenerator.forBlock['get_random_number'] = function(block, generator) {
-  var min = generator.valueToCode(block, 'MIN', javascriptGenerator.ORDER_ATOMIC) || '0';
-  var max = generator.valueToCode(block, 'MAX', javascriptGenerator.ORDER_ATOMIC) || '100';
+      var min = generator.valueToCode(block, 'MIN', javascriptGenerator.ORDER_ATOMIC) || '0';
+      var max = generator.valueToCode(block, 'MAX', javascriptGenerator.ORDER_ATOMIC) || '100';
 
-  // Formel: Zufallszahl zwischen min und max
-  // Math.floor wird genutzt, wenn du ganze Zahlen willst. 
-  // Ohne Math.floor bekommst du Kommazahlen (Dezimal).
-  var code = `Math.floor(Math.random() * (${max} - ${min} + 1) + ${min})`;
-  
-  return [code, javascriptGenerator.ORDER_NONE];
-};
-
+      var code = `Math.floor(Math.random() * (${max} - ${min} + 1) + parseInt(${min}))`;
+      return [code, javascriptGenerator.ORDER_NONE];
+    };
 window.Editor = {
     scripts: { "Main": null },
     currentScript: "Main",
