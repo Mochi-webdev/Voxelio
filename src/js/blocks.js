@@ -194,7 +194,22 @@ Blockly.Blocks['player_jump'] = {
     this.setTooltip("Lässt den Spieler springen, wenn er auf dem Boden steht.");
   }
 };
-
+Blockly.Blocks['get_matrix_value'] = {
+  init: function() {
+    this.appendValueInput("MATRIX")
+        .setCheck("Array")
+        .appendField("Hole Wert aus Matrix");
+    this.appendValueInput("ROW")
+        .setCheck("Number")
+        .appendField("Zeile");
+    this.appendValueInput("COL")
+        .setCheck("Number")
+        .appendField("Spalte");
+    this.setOutput(true, null);
+    this.setColour(260);
+    this.setTooltip("Gibt den Wert an einer bestimmten Position in der Matrix zurück.");
+  }
+};
 
 // --- GENERATORS ---
 
@@ -286,6 +301,19 @@ javascriptGenerator.forBlock['player_jump'] = function(block, generator) {
   var value_force = generator.valueToCode(block, 'FORCE', javascriptGenerator.ORDER_ATOMIC) || "0.3";
   return `App.jump(${value_force});\n`;
 };
+javascriptGenerator.forBlock['get_matrix_value'] = function(block, generator) {
+  var matrix = generator.valueToCode(block, 'MATRIX', javascriptGenerator.ORDER_ATOMIC) || '[]';
+  var row = generator.valueToCode(block, 'ROW', javascriptGenerator.ORDER_ATOMIC) || '0';
+  var col = generator.valueToCode(block, 'COL', javascriptGenerator.ORDER_ATOMIC) || '0';
+
+  // Sicherer Zugriff: Matrix[row][col]
+  var code = `(function(m, r, c) { 
+    return (m && m[r] && m[r][c] !== undefined) ? m[r][c] : 0; 
+  })(${matrix}, ${row}, ${col})`;
+  
+  return [code, javascriptGenerator.ORDER_FUNCTION_CALL];
+};
+
 
 window.Editor = {
     scripts: { "Main": null },
