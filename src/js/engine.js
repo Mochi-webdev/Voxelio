@@ -175,10 +175,13 @@ window.App = {
     },
 
     animate() {
-        requestAnimationFrame(() => this.animate());
+       requestAnimationFrame(() => this.animate());
 
+    
         if (this.isRunning) {
 
+            this.tickListeners.forEach(f => f());
+            this.updatePhysics();
             this.tickListeners.forEach(f => f());
 
 
@@ -751,21 +754,25 @@ window.App = {
         }
     },
 
-    // Diese Logik muss in deine animate() Funktion, damit der Spieler fällt
-    updatePhysics: function() {
-        if (!this.fpcPlayer || !this.isRunning) return;
+  updatePhysics: function() {
+    // Nur ausführen, wenn das Spiel läuft und ein Player da ist
+    if (!this.isRunning || !this.fpcPlayer) return;
 
-        // Schwerkraft anwenden
-        this.velocityy += this.gravity;
-        this.fpcPlayer.position.y += this.velocityy;
+    // 1. Schwerkraft auf Geschwindigkeit anwenden
+    this.velocityy = (this.velocityy || 0) + (this.gravity || -0.015);
+    
+    // 2. Geschwindigkeit auf Position anwenden
+    this.fpcPlayer.position.y += this.velocityy;
 
-        // Boden-Kollision (einfache Variante: Boden ist bei y=0)
-        if (this.fpcPlayer.position.y <= 0) {
-            this.fpcPlayer.position.y = 0;
-            this.velocityy = 0;
-            this.isGrounded = true;
-        }
-    },
+    // 3. Boden-Check (einfach: y = 0)
+    if (this.fpcPlayer.position.y <= 0) {
+        this.fpcPlayer.position.y = 0;
+        this.velocityy = 0;
+        this.isGrounded = true;
+    } else {
+        this.isGrounded = false;
+    }
+},
 };
 
 window.addEventListener('load', () => App.init());
