@@ -404,28 +404,28 @@ GC.forBlock['ui_proximity_trigger'] = wrap((b, g) => {
     const objName = b.getFieldValue('OBJ_NAME');
     const range = g.valueToCode(b, 'RANGE', ORDER_ATOMIC) || "5";
 
-    // Wir generieren eine ID-spezifische Variable für den State
-    const stateVar = `lastState_${uiId}_${objName.replace(/[^a-zA-Z0-9]/g, '')}`;
+    // Wir erstellen einen Namen, der sicher keine Sonderzeichen enthält
+    const safeObjName = objName.replace(/[^a-zA-Z0-9]/g, '');
+    const stateVar = `window.lastState_${uiId}_${safeObjName}`;
 
     return `
-let ${stateVar} = null; // Startet neutral
+${stateVar} = false; 
 
 App.onTick(() => {
     const pPos = App.getPlayerPosition(); 
     const oPos = App.getObjectPosition('${objName}');
     
     if (pPos && oPos) {
-        const dist = Math.sqrt(
-            Math.pow(pPos.x - oPos.x, 2) + 
-            Math.pow(pPos.y - oPos.y, 2) + 
-            Math.pow(pPos.z - oPos.z, 2)
-        );
+        const dx = pPos.x - oPos.x;
+        const dy = pPos.y - oPos.y;
+        const dz = pPos.z - oPos.z;
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
         
         const isClose = dist <= ${range};
         
-        // Nur aufrufen, wenn sich der Zustand WIRKLICH ändert
         if (isClose !== ${stateVar}) {
             ${stateVar} = isClose;
+            console.log("Trigger ${uiId}: " + (isClose ? "AN" : "AUS") + " Distanz: " + dist.toFixed(2));
             App.setUIVisibility('${uiId}', isClose);
         }
     }
