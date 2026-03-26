@@ -255,6 +255,24 @@ Blockly.Blocks['ui_proximity_trigger'] = {
     this.setTooltip("Blendet eine UI ein, wenn der Spieler nah genug am Objekt ist, sonst aus.");
   }
 };
+Blockly.Blocks['player_interact_with_object'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Wenn Taste")
+        .appendField(new Blockly.FieldDropdown([["E", "e"], ["Q", "q"], ["F", "f"], ["Enter", "Enter"]]), "KEY")
+        .appendField("gedrückt bei Objekt")
+        .appendField(new Blockly.FieldTextInput("Schatztruhe"), "OBJ_NAME");
+    this.appendValueInput("RANGE")
+        .setCheck("Number")
+        .appendField("Max. Distanz:");
+    this.appendStatementInput("DO")
+        .appendField("mache");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(60); // Event-Farbe
+  }
+};
+
 
 
 // --- GENERATORS CONFIG ---
@@ -398,6 +416,31 @@ App.onTick(() => {
             
             // Optional: Kleiner Log zur Kontrolle
             console.log(isClose ? "UI angezeigt" : "UI versteckt");
+        }
+    }
+});\n`;
+});
+GC.forBlock['player_interact_with_object'] = wrap((b, g) => {
+    const key = b.getFieldValue('KEY');
+    const objName = b.getFieldValue('OBJ_NAME');
+    const range = g.valueToCode(b, 'RANGE', ORDER_ATOMIC) || "3";
+    const statements = g.statementToCode(b, 'DO');
+
+    return `
+App.registerKeyEvent('${key}', () => {
+    const pPos = App.getPlayerPosition();
+    const oPos = App.getObjectPosition('${objName}');
+
+    if (pPos && oPos) {
+        const dist = Math.sqrt(
+            Math.pow(pPos.x - oPos.x, 2) + 
+            Math.pow(pPos.y - oPos.y, 2) + 
+            Math.pow(pPos.z - oPos.z, 2)
+        );
+
+        if (dist <= ${range}) {
+            console.log("Interaktion mit ${objName} erfolgreich!");
+            ${statements}
         }
     }
 });\n`;
