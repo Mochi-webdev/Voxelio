@@ -909,7 +909,14 @@ window.UI = {
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
 App.setUIVisibility = function(id, visible) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn(`UI mit ID ${id} nicht gefunden!`);
+        return;
+    }
+    el.style.display = visible ? "block" : "none";
     const uiElement = document.getElementById(id);
+
     if (uiElement) {
         if (visible) {
             uiElement.classList.add('visible');
