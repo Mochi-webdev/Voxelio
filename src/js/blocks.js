@@ -272,18 +272,13 @@ Blockly.Blocks['player_interact_with_object'] = {
     this.setColour(60); // Event-Farbe
   }
 };
-Blockly.Blocks['set_ui_visible_manual'] = {
-  init: function() {
-    this.appendDummyInput()
-        .appendField("Setze UI")
-        .appendField(new Blockly.FieldTextInput("meinUI"), "ID")
-        .appendField("auf")
-        .appendField(new Blockly.FieldDropdown([["sichtbar", "true"], ["unsichtbar", "false"]]), "STATE");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(260);
-    this.setTooltip("Schaltet die Sichtbarkeit eines UI-Elements manuell um.");
-  }
+GC.forBlock['set_ui_visible_manual'] = function(block) {
+    // Hole den Wert aus dem Textfeld "ID" des Blocks
+    const uiId = block.getFieldValue('ID'); 
+    const state = block.getFieldValue('STATE'); // "true" oder "false"
+
+    // Erzeuge den fertigen Code-String
+    return `App.setUIVisibility('${uiId}', ${state});\n`;
 };
 
 
