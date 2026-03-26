@@ -965,6 +965,25 @@ App.getObjectPosition = function(name) {
 };
 
 App.getPlayerPosition = function() {
-    // Falls du den First Person Controller nutzt:
-    return this.player ? this.player.position : {x:0, y:0, z:0};
+    if (!this.player) {
+        // Statt 0,0,0 lieber null zurückgeben, damit der Proximity-Check 
+        // weiß, dass er gar nicht erst rechnen muss.
+        return null; 
+    }
+
+    // Falls dein Player ein Three.js Mesh ist:
+    if (this.player.getWorldPosition) {
+        const target = new THREE.Vector3();
+        this.player.getWorldPosition(target);
+        return { x: target.x, y: target.y, z: target.z };
+    }
+
+    // Fallback für einfache Objekte:
+    return {
+        x: this.player.position.x || 0,
+        y: this.player.position.y || 0,
+        z: this.player.position.z || 0
+    };
+    
 };
+
