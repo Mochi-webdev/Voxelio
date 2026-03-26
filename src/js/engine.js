@@ -938,24 +938,20 @@ window.UI = {
 
 App.setUIVisibility = function(id, visible) {
     const el = document.getElementById(id) || document.getElementById("ui-" + id);
-    
-    if (!el) {
-        console.warn("Visibility-Fehler: Element " + id + " nicht gefunden.");
-        return;
-    }
+    if (!el) return;
 
     if (visible) {
-        // SOFORT sichtbar machen ohne Schnickschnack zum Testen
         el.style.display = "flex"; 
         el.style.opacity = "1";
         el.style.pointerEvents = "auto";
-        el.style.zIndex = "9999"; // Sicherstellen, dass es oben liegt
     } else {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
-        // Erst nach einer kurzen Zeit wirklich auf none setzen
+        // WICHTIG: Nach der Animation aus dem DOM-Layout entfernen
         setTimeout(() => {
-            if (el.style.opacity === "0") el.style.display = "none";
+            if (el.style.opacity === "0") {
+                el.style.display = "none";
+            }
         }, 300);
     }
 };

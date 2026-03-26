@@ -399,38 +399,39 @@ GC.forBlock['math_number'] = (b) => [b.getFieldValue('NUM'), ORDER_ATOMIC];
 GC.forBlock['text'] = (b, g) => [g.quote_(b.getFieldValue('TEXT')), ORDER_ATOMIC];
 GC.forBlock['text_join_simple'] = (b, g) => [`(${g.valueToCode(b, 'A', ORDER_ATOMIC) || "''"} + "" + ${g.valueToCode(b, 'B', ORDER_ATOMIC) || "''"})`, ORDER_ATOMIC];
 
-GC.forBlock['ui_proximity_trigger'] = wrap((b, g) => {
-    const uiId = b.getFieldValue('UI_ID');
-    const objName = b.getFieldValue('OBJ_NAME');
-    const range = g.valueToCode(b, 'RANGE', ORDER_ATOMIC) || "5";
+GC.forBlock['ui_proximity_trigger'] = function(block, generator) {
+    const uiId = block.getFieldValue('UI_ID');
+    const objName = block.getFieldValue('OBJ_NAME');
+    const range = generator.valueToCode(block, 'RANGE', Blockly.JavaScript.ORDER_ATOMIC) || "5";
 
-    // Wir erstellen einen Namen, der sicher keine Sonderzeichen enthält
-    const safeObjName = objName.replace(/[^a-zA-Z0-9]/g, '');
-    const stateVar = `window.lastState_${uiId}_${safeObjName}`;
+    // Einzigartige Variable für diesen spezifischen Trigger
+    const stateVar = `window.state_${uiId}_${objName.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     return `
-${stateVar} = false; 
+${stateVar} = false; // Initialzustand
 
 App.onTick(() => {
     const pPos = App.getPlayerPosition(); 
     const oPos = App.getObjectPosition('${objName}');
     
     if (pPos && oPos) {
-        const dx = pPos.x - oPos.x;
-        const dy = pPos.y - oPos.y;
-        const dz = pPos.z - oPos.z;
-        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        const dist = Math.sqrt(
+            Math.pow(pPos.x - oPos.x, 2) + 
+            Math.pow(pPos.y - oPos.y, 2) + 
+            Math.pow(pPos.z - oPos.z, 2)
+        );
         
         const isClose = dist <= ${range};
         
+        // NUR aufrufen, wenn sich der Zustand geändert hat (Performance!)
         if (isClose !== ${stateVar}) {
             ${stateVar} = isClose;
-            console.log("Trigger ${uiId}: " + (isClose ? "AN" : "AUS") + " Distanz: " + dist.toFixed(2));
             App.setUIVisibility('${uiId}', isClose);
+            console.log("UI ${uiId} Sichtbarkeit geändert auf: " + isClose);
         }
     }
 });\n`;
-});
+};
 
 GC.forBlock['player_interact_with_object'] = wrap((b, g) => {
     const key = b.getFieldValue('KEY');
