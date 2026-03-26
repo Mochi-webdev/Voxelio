@@ -909,36 +909,37 @@ window.UI = {
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
 App.setUIVisibility = function(id, visible) {
-    const el = document.getElementById(id);
-    if (!el) {
-        console.warn(`UI mit ID ${id} nicht gefunden!`);
-        return;
-    }
-
-    if (visible) {
-        // Erst anzeigen, dann sichtbar machen
-        el.style.display = "block";
-        // Kleiner Delay, damit der Browser den Wechsel von none zu block registriert
-        setTimeout(() => {
-            el.style.opacity = "1";
-            el.style.pointerEvents = "auto"; // Klicks erlauben
-            el.classList.add('visible');
-        }, 10);
-    } else {
-        // Erst ausfaden
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none"; // Klicks verhindern
-        el.classList.remove('visible');
+    const trySet = (attempts) => {
+        const el = document.getElementById(id);
         
-        // Erst nach der Animation (z.B. 300ms) auf display: none setzen
-        setTimeout(() => {
-            if (el.style.opacity === "0") { // Check, falls es inzwischen wieder eingeblendet wurde
-                el.style.display = "none";
+        if (!el) {
+            if (attempts > 0) {
+                // Wenn nicht gefunden, in 10ms nochmal probieren (bis zu 5-mal)
+                setTimeout(() => trySet(attempts - 1), 10);
+            } else {
+                console.warn(`UI mit ID ${id} wurde auch nach mehrmaligem Versuchen nicht gefunden.`);
             }
-        }, 300); 
-    }
-};
+            return;
+        }
 
+        // --- Hier dein funktionierender Logik-Teil ---
+        if (visible) {
+            el.style.display = "block";
+            setTimeout(() => {
+                el.style.opacity = "1";
+                el.style.pointerEvents = "auto";
+            }, 10);
+        } else {
+            el.style.opacity = "0";
+            el.style.pointerEvents = "none";
+            setTimeout(() => {
+                if (el.style.opacity === "0") el.style.display = "none";
+            }, 300);
+        }
+    };
+
+    trySet(5); // Starte den Versuch mit 5 Wiederholungen
+};
 App.getObjectPosition = function(name) {
     const obj = this.scene.getObjectByName(name);
     return obj ? obj.position : null;
