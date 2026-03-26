@@ -1,4 +1,5 @@
 window.App = window.App || {};
+App.uiElements = {};
 window.App.textures = window.App.textures || {};
 window.Editor = {
     scripts: { "main": {} },
@@ -66,6 +67,7 @@ window.App = {
     isRunning: false,
     fpcPlayer: null,
     solids: [],
+    
     mouseDelta: { x: 0, y: 0 },
     textures: {},
     init() {
@@ -615,79 +617,84 @@ window.App = {
 
 
     uiElements: {},
+createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+    // 1. Altes Element entfernen, falls ID schon existiert
+    if (this.uiElements[id]) {
+        this.uiElements[id].remove();
+    }
 
-    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+    const el = document.createElement(type === 'button' ? 'button' : 'div');
+    
+    // WICHTIG: Benutze die reine ID, damit getElementById(id) funktioniert
+    el.id = id; 
 
-        if (this.uiElements[id]) {
-            this.uiElements[id].remove();
-        }
+    // Basis-Styling
+    el.style.position = "absolute";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.width = w + "px";
+    el.style.height = h + "px";
+    el.style.zIndex = "100";
+    el.style.display = "flex"; // Standardmäßig flex, aber wir steuern Sichtbarkeit über opacity/display
+    
+    // NEU: Transition für weiches Ein-/Ausblenden hinzufügen
+    el.style.transition = "opacity 0.3s ease";
+    el.style.opacity = "1"; // Standardmäßig voll sichtbar beim Erstellen
 
-        const el = document.createElement(type === 'button' ? 'button' : 'div');
-        el.id = "ui-" + id;
+    // ... (Dein restliches Styling: alignItems, font, etc.) ...
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    el.style.fontFamily = "sans-serif";
+    el.style.boxSizing = "border-box";
+    el.style.border = "none";
 
-        el.style.position = "absolute";
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        el.style.width = w + "px";
-        el.style.height = h + "px";
-        el.style.zIndex = "100";
-        el.style.border = "none";
-        el.style.boxSizing = "border-box";
-        el.style.display = "flex";
-        el.style.alignItems = "center";
-        el.style.justifyContent = "center";
-        el.style.fontFamily = "sans-serif";
+    // Button Logik
+    if (type === 'button') {
+        el.innerText = text;
+        el.style.cursor = "pointer";
+        el.onclick = () => {
+            this.setVariable(`btn_${id}_clicked`, true);
+        };
+    }
 
+    // Scrolling Frame Logik
+    if (type === 'scrolling_frame') {
+        el.style.overflowY = "auto";
+        el.style.overflowX = "hidden";
+        el.style.display = "block"; 
+    }
+
+    // Textur oder Default-Farben
+    if (texture && texture !== "none" && this.textures[texture]) {
+        el.style.backgroundImage = `url(${this.textures[texture]})`;
+        el.style.backgroundSize = "100% 100%";
+        el.style.backgroundRepeat = "no-repeat";
+        el.style.backgroundColor = "transparent";
+    } else {
         if (type === 'button') {
-            el.innerText = text;
-            el.style.cursor = "pointer";
-
-            el.onclick = () => {
-                this.setVariable(`btn_${id}_clicked`, true);
-            };
-        }
-
-        if (type === 'scrolling_frame') {
-            el.style.overflowY = "auto";
-            el.style.overflowX = "hidden";
-            el.style.display = "block";
-        }
-
-
-        if (texture && texture !== "none" && this.textures[texture]) {
-            el.style.backgroundImage = `url(${this.textures[texture]})`;
-            el.style.backgroundSize = "100% 100%";
-            el.style.backgroundRepeat = "no-repeat";
-            el.style.backgroundColor = "transparent";
+            el.style.backgroundColor = "#444";
+            el.style.color = "white";
         } else {
-
-            if (type === 'button') {
-                el.style.backgroundColor = "#444";
-                el.style.color = "white";
-            } else {
-                el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                el.style.border = "1px solid #555";
-            }
+            el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+            el.style.border = "1px solid #555";
         }
+    }
 
+    // Container finden und hinzufügen
+    let targetContainer = document.getElementById('canvas3d');
+    if (parentId && this.uiElements[parentId]) {
+        targetContainer = this.uiElements[parentId];
+    }
 
-        let targetContainer = document.getElementById('canvas3d');
+    if (targetContainer) {
+        targetContainer.appendChild(el);
+        this.uiElements[id] = el; // Hier speichern wir die Referenz
+    } else {
+        console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
+    }
 
-        if (parentId && this.uiElements[parentId]) {
-            targetContainer = this.uiElements[parentId];
-
-        }
-
-
-        if (targetContainer) {
-            targetContainer.appendChild(el);
-            this.uiElements[id] = el;
-        } else {
-            console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
-        }
-
-        this.updateExplorer();
-    },
+    this.updateExplorer();
+},
 
     isButtonClicked(id) {
         const varName = `btn_${id}_clicked`;
