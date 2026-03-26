@@ -914,17 +914,28 @@ App.setUIVisibility = function(id, visible) {
         console.warn(`UI mit ID ${id} nicht gefunden!`);
         return;
     }
-    el.style.display = visible ? "block" : "none";
-    const uiElement = document.getElementById(id);
 
-    if (uiElement) {
-        if (visible) {
-            uiElement.classList.add('visible');
-            uiElement.style.opacity = "1";
-        } else {
-            uiElement.classList.remove('visible');
-            uiElement.style.opacity = "0";
-        }
+    if (visible) {
+        // Erst anzeigen, dann sichtbar machen
+        el.style.display = "block";
+        // Kleiner Delay, damit der Browser den Wechsel von none zu block registriert
+        setTimeout(() => {
+            el.style.opacity = "1";
+            el.style.pointerEvents = "auto"; // Klicks erlauben
+            el.classList.add('visible');
+        }, 10);
+    } else {
+        // Erst ausfaden
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none"; // Klicks verhindern
+        el.classList.remove('visible');
+        
+        // Erst nach der Animation (z.B. 300ms) auf display: none setzen
+        setTimeout(() => {
+            if (el.style.opacity === "0") { // Check, falls es inzwischen wieder eingeblendet wurde
+                el.style.display = "none";
+            }
+        }, 300); 
     }
 };
 
