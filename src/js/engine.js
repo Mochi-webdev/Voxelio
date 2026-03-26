@@ -54,7 +54,28 @@ window.Editor = {
     },
 
     showModal() { document.getElementById('nameModal').style.display = 'flex'; },
-    hideModal() { document.getElementById('nameModal').style.display = 'none'; }
+    hideModal() { document.getElementById('nameModal').style.display = 'none'; },
+    getAllCode() {
+        this.updateCurrentScriptBuffer(); 
+        let fullCode = "";
+        const generator = window.javascriptGenerator || Blockly.JavaScript;
+
+        Object.values(this.scripts).forEach(saveData => {
+            if (saveData) {
+                const tempWorkspace = new Blockly.Workspace();
+                Blockly.serialization.workspaces.load(saveData, tempWorkspace);
+                fullCode += generator.workspaceToCode(tempWorkspace) + "\n";
+                tempWorkspace.dispose();
+            }
+        });
+        return fullCode;
+    },
+
+    updateCurrentScriptBuffer() {
+        if (window.workspace) {
+            this.scripts[this.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
+        }
+    }
 };
 window.App = {
     scene: null,
