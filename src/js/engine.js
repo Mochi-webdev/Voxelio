@@ -268,20 +268,20 @@ window.App = {
 
 
     run() {
-        this.stop(); // Das hier MUSS zuerst kommen, um alles zu säubern!
+        this.stop();
         this.isRunning = true;
 
-        // UI-Elemente im DOM finden und verstecken, falls sie noch da sind
-        Object.values(this.uiElements).forEach(el => {
-            el.style.display = "none";
-            el.style.opacity = "0";
-        });
-
         try {
-            const code = Editor.getAllCode();
-            eval(code);
+            const rawCode = Editor.getAllCode();
+            // Wir wickeln den Code in eine async-Funktion ein
+            const asyncCode = `(async () => { 
+            ${rawCode} 
+        })();`;
+
+            eval(asyncCode);
         } catch (e) {
-            console.error("Code Fehler:", e);
+            console.error("Fehler beim Ausführen des Codes:", e);
+            this.stop();
         }
     },
     removeUI(id) {
@@ -860,8 +860,8 @@ window.UI = {
     loadFromCloud: async function (projectName) {
         // 1. Hole die UID des Besitzers aus der URL, falls vorhanden
         const urlParams = new URLSearchParams(window.location.search);
-        const projectOwner = urlParams.get('owner'); 
-        
+        const projectOwner = urlParams.get('owner');
+
         // 2. Bestimme, wessen Daten geladen werden sollen
         // Wenn kein 'owner' in der URL ist, lade vom aktuell angemeldeten User
         const targetUID = projectOwner || (AuthHandler.user ? AuthHandler.user.uid : null);
@@ -882,9 +882,9 @@ window.UI = {
 
             if (doc.exists) {
                 const data = doc.data();
-                
+
                 // ... (restliche Logik zum Setzen von window.Editor.scripts und window.App.textures)
-                
+
                 // WICHTIG: Falls Scripts als String gespeichert wurden (Base64)
                 if (typeof data.scripts === 'string') {
                     const decoded = decodeURIComponent(escape(atob(data.scripts)));
