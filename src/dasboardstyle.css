@@ -196,6 +196,16 @@ h2 {
     cursor: pointer;
     font-weight: 500;
 }
+.Change-btn {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #000000;
+    padding: 1rem;
+    cursor: pointer;
+    font-weight: 500;
+}
 
 .logout-btn:hover {
     background: #fff5f5;
