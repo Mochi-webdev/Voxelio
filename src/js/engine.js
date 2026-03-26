@@ -220,26 +220,29 @@ window.App = {
     },
 
     animate() {
-       requestAnimationFrame(() => this.animate());
+    requestAnimationFrame(() => this.animate());
 
-    
-        if (this.isRunning) {
+    if (this.isRunning) {
+        // 1. Blickrichtung aktualisieren (Maus)
+        if (this.fpcPlayer) this.updateFPCLook(); 
 
-            this.tickListeners.forEach(f => f());
-            this.updatePhysics();
-            this.tickListeners.forEach(f => f());
+        // 2. Physik (Schwerkraft/Boden)
+        this.updatePhysics();
 
+        // 3. Blockly-Events (onTick)
+        this.tickListeners.forEach(f => f());
 
-            Object.values(this.objects).forEach(o => {
-                if (o.userData && o.userData.animations) {
-                    o.userData.animations.forEach(f => f());
-                }
-            });
-        }
+        // 4. Objekt-Animationen
+        Object.values(this.objects).forEach(o => {
+            if (o.userData && o.userData.animations) {
+                o.userData.animations.forEach(f => f());
+            }
+        });
+    }
 
-        if (this.controls && this.controls.enabled) this.controls.update();
-        this.renderer.render(this.scene, this.camera);
-    },
+    if (this.controls && this.controls.enabled) this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+},
 
     setupFPC(name) {
         this.fpcPlayer = this.objects[name];
@@ -805,17 +808,14 @@ createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
         }
     },
 
-  updatePhysics: function() {
-    // Nur ausführen, wenn das Spiel läuft und ein Player da ist
+ updatePhysics: function() {
     if (!this.isRunning || !this.fpcPlayer) return;
 
-    // 1. Schwerkraft auf Geschwindigkeit anwenden
+    // Schwerkraft
     this.velocityy = (this.velocityy || 0) + (this.gravity || -0.015);
-    
-    // 2. Geschwindigkeit auf Position anwenden
     this.fpcPlayer.position.y += this.velocityy;
 
-    // 3. Boden-Check (einfach: y = 0)
+    // Boden-Check (y=0)
     if (this.fpcPlayer.position.y <= 0) {
         this.fpcPlayer.position.y = 0;
         this.velocityy = 0;
@@ -959,31 +959,22 @@ App.setUIVisibility = function(id, visible) {
         }, 300);
     }
 };
-App.getObjectPosition = function(name) {
-    const obj = this.scene.getObjectByName(name);
-    return obj ? obj.position : null;
-};
-
 App.getPlayerPosition = function() {
-    if (!this.player) {
-        // Statt 0,0,0 lieber null zurückgeben, damit der Proximity-Check 
-        // weiß, dass er gar nicht erst rechnen muss.
-        return null; 
-    }
+    // WICHTIG: Nutze fpcPlayer, da dein setupFPC diesen Namen verwendet
+    const p = this.fpcPlayer; 
+    if (!p) return null;
 
-    // Falls dein Player ein Three.js Mesh ist:
-    if (this.player.getWorldPosition) {
-        const target = new THREE.Vector3();
-        this.player.getWorldPosition(target);
-        return { x: target.x, y: target.y, z: target.z };
-    }
-
-    // Fallback für einfache Objekte:
-    return {
-        x: this.player.position.x || 0,
-        y: this.player.position.y || 0,
-        z: this.player.position.z || 0
-    };
-    
+    const target = new THREE.Vector3();
+    p.getWorldPosition(target);
+    return { x: target.x, y: target.y, z: target.z };
 };
 
+App.getObjectPosition = function(name) {
+    // Suche in der App.objects Liste
+    const obj = this.objects[name]; 
+    if (!obj) return null;
+
+    const target = new THREE.Vector3();
+    obj.getWorldPosition(target);
+    return { x: target.x, y: target.y, z: target.z };
+};
