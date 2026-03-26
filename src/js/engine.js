@@ -115,6 +115,28 @@ window.App = {
 
         this.animate();
     },
+    cloneObject: function(originalName, newId) {
+        const original = this.objects[originalName];
+        if (!original) {
+            console.warn("Clone-Fehler: Objekt '" + originalName + "' nicht gefunden.");
+            return;
+        }
+
+        // 1. Objekt klonen
+        const clone = original.clone();
+        
+        // 2. Neue ID zuweisen und im System registrieren
+        clone.name = newId;
+        this.objects[newId] = clone;
+        
+        // 3. Zur Szene hinzufügen
+        this.scene.add(clone);
+        
+        // 4. Explorer aktualisieren, damit der Klon in der Liste erscheint
+        this.updateExplorer();
+        
+        console.log(`Objekt '${originalName}' wurde als '${newId}' geklont.`);
+    },
 
     onResize() {
         let c = document.getElementById('canvas3d');

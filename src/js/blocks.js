@@ -224,6 +224,20 @@ Blockly.Blocks['get_random_number'] = {
     this.setHelpUrl("");
   }
 };
+Blockly.Blocks['clone_object'] = {
+  init: function() {
+    this.appendValueInput("ORIGINAL")
+        .setCheck("String")
+        .appendField("Klone Objekt");
+    this.appendValueInput("NEWID")
+        .setCheck("String")
+        .appendField("mit neuer ID");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(120); // Grün für "Erstellen"
+    this.setTooltip("Erstellt eine exakte Kopie eines Objekts.");
+  }
+};
 
 
 // --- GENERATORS ---
@@ -334,7 +348,19 @@ javascriptGenerator.forBlock['get_random_number'] = function(block, generator) {
 
       var code = `Math.floor(Math.random() * (${max} - ${min} + 1) + parseInt(${min}))`;
       return [code, javascriptGenerator.ORDER_NONE];
-    };
+};
+javascriptGenerator.forBlock['clone_object'] = function(block, generator) {
+  var original = generator.valueToCode(block, 'ORIGINAL', javascriptGenerator.ORDER_ATOMIC) || "''";
+  var newId = generator.valueToCode(block, 'NEWID', javascriptGenerator.ORDER_ATOMIC) || "''";
+  
+  return `App.cloneObject(${original}, ${newId});\n`;
+};
+
+
+
+
+
+
 window.Editor = {
     scripts: { "Main": null },
     currentScript: "Main",
