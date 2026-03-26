@@ -969,6 +969,7 @@ App.setUIVisibility = function (id, visible) {
         }, 300);
     }
 };
+
 App.getPlayerPosition = function () {
     // WICHTIG: Nutze fpcPlayer, da dein setupFPC diesen Namen verwendet
     const p = this.fpcPlayer;
