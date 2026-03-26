@@ -285,7 +285,23 @@ Blockly.Blocks['set_ui_visible_manual'] = {
     this.setTooltip("Schaltet die Sichtbarkeit eines UI-Elements manuell um.");
   }
 };
+Blockly.Blocks['wait_seconds'] = {
+  init: function() {
+    // Nutze "this.appendValueInput" direkt
+    this.appendValueInput("SECONDS")
+        .setCheck("Number")
+        .appendField("warte");
+    
+    // Richtig aufgerufen am Block-Objekt:
+    this.appendDummyField()
+        .appendField("Sekunden");
 
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(260);
+    this.setTooltip("Pausiert das Skript für X Sekunden.");
+  }
+};
 
 // --- GENERATORS CONFIG ---
 // Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
@@ -464,7 +480,11 @@ GC.forBlock['set_ui_visible_manual'] = function(block) {
     // Erzeuge den fertigen Code-String
     return `App.setUIVisibility('${uiId}', ${state});\n`;
 };
-
+GC.forBlock['wait_seconds'] = function(block, generator) {
+  const seconds = generator.valueToCode(block, 'SECONDS', Blockly.JavaScript.ORDER_ATOMIC) || "1";
+  // WICHTIG: Das await sorgt dafür, dass die Engine pausiert
+  return `await new Promise(resolve => setTimeout(resolve, ${seconds} * 1000));\n`;
+};
 
 
 

@@ -268,22 +268,26 @@ window.App = {
 
 
     run() {
-        this.stop();
-        this.isRunning = true;
+    this.stop();
+    this.isRunning = true;
 
+    const rawCode = Editor.getAllCode();
+    
+    // Wir packen den Code in eine 'async' Funktion
+    const executableCode = `(async () => {
         try {
-            const rawCode = Editor.getAllCode();
-            // Wir wickeln den Code in eine async-Funktion ein
-            const asyncCode = `(async () => { 
-            ${rawCode} 
-        })();`;
-
-            eval(asyncCode);
+            ${rawCode}
         } catch (e) {
-            console.error("Fehler beim Ausführen des Codes:", e);
-            this.stop();
+            console.error("Fehler im Skript:", e);
         }
-    },
+    })();`;
+
+    try {
+        eval(executableCode);
+    } catch (e) {
+        console.error("Eval Fehler:", e);
+    }
+},
     removeUI(id) {
         if (this.uiElements[id]) {
             this.uiElements[id].remove();
