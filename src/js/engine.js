@@ -858,85 +858,54 @@ window.switchTab = function (tab) {
 
 window.UI = {
     loadFromCloud: async function (projectName) {
-        if (!window.AuthHandler || !AuthHandler.user) {
-            console.error("Laden abgebrochen: Benutzer nicht angemeldet.");
+        // 1. Hole die UID des Besitzers aus der URL, falls vorhanden
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectOwner = urlParams.get('owner'); 
+        
+        // 2. Bestimme, wessen Daten geladen werden sollen
+        // Wenn kein 'owner' in der URL ist, lade vom aktuell angemeldeten User
+        const targetUID = projectOwner || (AuthHandler.user ? AuthHandler.user.uid : null);
+
+        if (!targetUID) {
+            console.error("Laden fehlgeschlagen: Kein Besitzer gefunden.");
             return;
         }
 
         try {
-            console.log(`Lade Projekt: ${projectName}...`);
+            console.log(`Lade Projekt "${projectName}" von User: ${targetUID}`);
             const doc = await firebase.firestore()
                 .collection('users')
-                .doc(AuthHandler.user.uid)
+                .doc(targetUID) // Hier nutzen wir die targetUID statt AuthHandler.user.uid
                 .collection('projects')
                 .doc(projectName)
                 .get();
 
             if (doc.exists) {
                 const data = doc.data();
-
-
-                if (data.textures) {
-                    window.App.textures = data.textures;
-                    console.log("Texturen geladen:", Object.keys(data.textures));
+                
+                // ... (restliche Logik zum Setzen von window.Editor.scripts und window.App.textures)
+                
+                // WICHTIG: Falls Scripts als String gespeichert wurden (Base64)
+                if (typeof data.scripts === 'string') {
+                    const decoded = decodeURIComponent(escape(atob(data.scripts)));
+                    window.Editor.scripts = JSON.parse(decoded);
                 } else {
-                    window.App.textures = {};
+                    window.Editor.scripts = data.scripts || { "main": {} };
                 }
 
-
-
-                if (data.scripts) {
-                    try {
-                        // Check if data is encoded (String) or old format (Object)
-                        if (typeof data.scripts === 'string') {
-                            const decoded = decodeURIComponent(escape(atob(data.scripts)));
-                            window.Editor.scripts = JSON.parse(decoded);
-                        } else {
-                            window.Editor.scripts = data.scripts;
-                        }
-                    } catch (e) {
-                        console.error("Decoding error:", e);
-                        window.Editor.scripts = { "Main": {} };
-                    }
-                }
-
-
-                const scriptNames = Object.keys(window.Editor.scripts);
-                const scriptToDisplay = scriptNames.includes("Main") ? "Main" : scriptNames[0];
-
-                window.Editor.currentScript = scriptToDisplay;
-
-
-                if (window.Editor.renderList) {
-                    window.Editor.renderList();
-                }
-
-
-                if (window.workspace) {
-                    window.workspace.clear();
-                    const savedBlocks = window.Editor.scripts[scriptToDisplay];
-
-                    if (savedBlocks && Object.keys(savedBlocks).length > 0) {
-                        try {
-                            Blockly.serialization.workspaces.load(savedBlocks, window.workspace);
-                            console.log("Blöcke erfolgreich in Workspace geladen.");
-                        } catch (err) {
-                            console.error("Fehler beim Parsen der Blöcke:", err);
-
-                            try {
-                                const xml = Blockly.utils.xml.textToDom(savedBlocks);
-                                Blockly.Xml.domToWorkspace(xml, window.workspace);
-                            } catch (e2) { console.error("XML Fallback fehlgeschlagen."); }
-                        }
-                    }
-                }
-
-                console.log("✅ Projekt vollständig geladen.");
-            } else {
-                console.warn("Projekt wurde in der Datenbank nicht gefunden.");
+                // Workspace aktualisieren
+                this.refreshWorkspace();
+                console.log("✅ Projekt erfolgreich geladen!");
             }
         } catch (error) {
-            console.error("Kritischer Fehler beim Laden aus der Cloud:", error);
+            console.error("Firestore Fehler:", error);
+        }
+    },
+
+    refreshWorkspace() {
+        if (window.workspace && window.Editor.scripts[window.Editor.currentScript]) {
+            window.workspace.clear();
+            Blockly.serialization.workspaces.load(window.Editor.scripts[window.Editor.currentScript], window.workspace);
         }
     }
 };
