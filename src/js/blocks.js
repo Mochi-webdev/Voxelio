@@ -240,7 +240,14 @@ Blockly.Blocks['clone_object'] = {
 };
 
 
-// --- GENERATORS ---
+// --- GENERATORS CONFIG ---
+// Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
+const GC = window.javascriptGenerator || Blockly.JavaScript;
+
+// Sicherheits-Check: Falls der Generator gar nicht geladen wurde, bricht das Skript hier sanft ab.
+if (!GC) {
+    console.error("Blockly Generator (JavaScript) wurde nicht gefunden!");
+}
 
 const isConnected = (b) => {
     let r = b.getRootBlock();
@@ -252,110 +259,98 @@ const wrap = (fn) => function (b, g) {
     return fn(b, g);
 };
 
-// Events
-javascriptGenerator.forBlock['event_flag'] = (b, g) => { let n = b.getNextBlock(); return n ? g.blockToCode(n) : ""; };
-javascriptGenerator.forBlock['event_key'] = (b, g) => { let k = b.getFieldValue('KEY'), n = b.getNextBlock(); return `App.registerKeyEvent('${k}', () => {\n${n ? g.blockToCode(n) : ""}});\n`; };
-javascriptGenerator.forBlock['event_tick'] = (b, g) => { return `App.onTick(() => {\n${b.getNextBlock() ? g.blockToCode(b.getNextBlock()) : ""}});\n`; };
+// Konstanten für die Rangfolge (Precedence) - Verhindert "undefined" Fehler
+const ORDER_ATOMIC = GC.ORDER_ATOMIC || 0;
+const ORDER_NONE = GC.ORDER_NONE || 0;
+const ORDER_FUNCTION_CALL = GC.ORDER_FUNCTION_CALL || 0;
 
-// 3D & Transform
-javascriptGenerator.forBlock['create_group'] = wrap(b => `App.spawn('group', '#ffffff', '${b.getFieldValue('NAME')}');\n`);
-javascriptGenerator.forBlock['create_shape'] = wrap((b, g) => `App.spawn('${b.getFieldValue('TYPE')}', ${g.valueToCode(b, 'COL', 0) || "'#ffffff'"}, '${b.getFieldValue('NAME')}', '${b.getFieldValue('PARENT')}');\n`);
-javascriptGenerator.forBlock['set_position'] = wrap((b, g) => `App.transform('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', 0) || 0});\n`);
-javascriptGenerator.forBlock['move_object'] = wrap((b, g) => `App.move('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', 0) || 0});\n`);
-javascriptGenerator.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', 0) || 1});\n`);
-javascriptGenerator.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
-javascriptGenerator.forBlock['set_dimensions'] = wrap((b, g) => `App.setDimension('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VALUE', 0) || 1});\n`);
-javascriptGenerator.forBlock['set_rotation'] = wrap((b, g) => `App.setRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'DEGREE', 0) || 0});\n`);
-javascriptGenerator.forBlock['set_texture'] = wrap((b) => { const tex = b.getFieldValue('TEX'); return tex === "none" ? "" : `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`; });
+// --- EVENT GENERATORS ---
+GC.forBlock['event_flag'] = (b, g) => { let n = b.getNextBlock(); return n ? g.blockToCode(n) : ""; };
+GC.forBlock['event_key'] = (b, g) => { 
+    let k = b.getFieldValue('KEY'), n = b.getNextBlock(); 
+    return `App.registerKeyEvent('${k}', () => {\n${n ? g.blockToCode(n) : ""}});\n`; 
+};
+GC.forBlock['event_tick'] = (b, g) => { 
+    return `App.onTick(() => {\n${b.getNextBlock() ? g.blockToCode(b.getNextBlock()) : ""}});\n`; 
+};
 
-// Controls
-javascriptGenerator.forBlock['setup_fpc'] = (b) => `App.setupFPC('${b.getFieldValue('NAME')}');\n`;
-javascriptGenerator.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
-javascriptGenerator.forBlock['fpc_move'] = (b, g) => `App.moveFPC('${b.getFieldValue('DIR')}', ${g.valueToCode(b, 'SPEED', 0) || "0.1"});\n`;
-javascriptGenerator.forBlock['set_view_mode'] = (b) => `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
-javascriptGenerator.forBlock['set_solid'] = (b) => `App.setSolid('${b.getFieldValue('NAME')}', ${b.getFieldValue('SOLID') === 'TRUE'});\n`;
+// --- 3D & TRANSFORM GENERATORS ---
+GC.forBlock['create_group'] = wrap(b => `App.spawn('group', '#ffffff', '${b.getFieldValue('NAME')}');\n`);
+GC.forBlock['create_shape'] = wrap((b, g) => `App.spawn('${b.getFieldValue('TYPE')}', ${g.valueToCode(b, 'COL', ORDER_ATOMIC) || "'#ffffff'"}, '${b.getFieldValue('NAME')}', '${b.getFieldValue('PARENT')}');\n`);
+GC.forBlock['set_position'] = wrap((b, g) => `App.transform('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0});\n`);
+GC.forBlock['move_object'] = wrap((b, g) => `App.move('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0});\n`);
+GC.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 1});\n`);
+GC.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
+GC.forBlock['set_dimensions'] = wrap((b, g) => `App.setDimension('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || 1});\n`);
+GC.forBlock['set_rotation'] = wrap((b, g) => `App.setRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'DEGREE', ORDER_ATOMIC) || 0});\n`);
+GC.forBlock['set_texture'] = wrap((b) => { const tex = b.getFieldValue('TEX'); return tex === "none" ? "" : `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`; });
 
-// Logic & Vars
-javascriptGenerator.forBlock['logic_if'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', 0) || 'false'}) {\n${g.statementToCode(b, 'DO')}}\n`;
-javascriptGenerator.forBlock['logic_if_else'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', 0) || 'false'}) {\n${g.statementToCode(b, 'DO')}} else {\n${g.statementToCode(b, 'ELSE')}}\n`;
-javascriptGenerator.forBlock['logic_compare'] = (b, g) => { const op = { 'EQ': '===', 'NEQ': '!==', 'LT': '<', 'GT': '>' }[b.getFieldValue('OP')]; return [`(${g.valueToCode(b, 'A', 0) || '0'} ${op} ${g.valueToCode(b, 'B', 0) || '0'})`, 0]; };
-javascriptGenerator.forBlock['logic_boolean'] = (b) => [b.getFieldValue('BOOL') === 'TRUE' ? 'true' : 'false', 0];
-javascriptGenerator.forBlock['init_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', ${g.valueToCode(b, 'VALUE', 0) || '0'});\n`;
-javascriptGenerator.forBlock['set_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', ${g.valueToCode(b, 'VALUE', 0) || '0'});\n`;
-javascriptGenerator.forBlock['get_var'] = (b) => [`App.getVariable('${b.getFieldValue('VAR')}')`, 0];
-javascriptGenerator.forBlock['change_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', App.getVariable('${b.getFieldValue('VAR')}') + ${g.valueToCode(b, 'VALUE', 0) || '0'});\n`;
-javascriptGenerator.forBlock['display_var'] = (b) => `App.displayVariable('${b.getFieldValue('VAR')}', '${b.getFieldValue('LABEL')}');\n`;
-javascriptGenerator.forBlock['is_touching'] = (b) => [`App.checkCollisionBetween('${b.getFieldValue('A')}', '${b.getFieldValue('B')}')`, 0];
+// --- CONTROLS & PHYSICS GENERATORS ---
+GC.forBlock['setup_fpc'] = (b) => `App.setupFPC('${b.getFieldValue('NAME')}');\n`;
+GC.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
+GC.forBlock['fpc_move'] = (b, g) => `App.moveFPC('${b.getFieldValue('DIR')}', ${g.valueToCode(b, 'SPEED', ORDER_ATOMIC) || "0.1"});\n`;
+GC.forBlock['player_jump'] = wrap((b, g) => `App.jump(${g.valueToCode(b, 'FORCE', ORDER_ATOMIC) || "0.3"});\n`);
+GC.forBlock['set_view_mode'] = (b) => `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
+GC.forBlock['set_solid'] = (b) => `App.setSolid('${b.getFieldValue('NAME')}', ${b.getFieldValue('SOLID') === 'TRUE'});\n`;
 
-// UI Generators
-javascriptGenerator.forBlock['create_ui'] = wrap(b => `App.createUI('${b.getFieldValue('TYPE')}', '${b.getFieldValue('ID')}', ${b.getFieldValue('X')}, ${b.getFieldValue('Y')}, ${b.getFieldValue('W')}, ${b.getFieldValue('H')}, '${b.getFieldValue('TEXT')}', '${b.getFieldValue('TEX') === 'none' ? '' : b.getFieldValue('TEX')}', null);\n`);
-javascriptGenerator.forBlock['ui_button_pressed'] = (b) => [`App.isButtonClicked('${b.getFieldValue('ID')}')`, 0];
-javascriptGenerator.forBlock['remove_ui'] = wrap(b => `App.removeUI('${b.getFieldValue('ID')}');\n`);
-javascriptGenerator.forBlock['set_ui_text'] = wrap((b, g) => `App.setUIText('${b.getFieldValue('ID')}', ${g.valueToCode(b, 'TEXT', 0) || "''"});\n`);
-javascriptGenerator.forBlock['style_ui'] = wrap(b => {
-    return `App.styleUI('${b.getFieldValue('ID')}', { radius: ${b.getFieldValue('RADIUS')}, bgColor: '${b.getFieldValue('BG_COLOR')}', opacity: ${b.getFieldValue('OPACITY')}, strokeWidth: ${b.getFieldValue('STROKE_W')}, strokeColor: '${b.getFieldValue('STROKE_C')}' });\n`;
+// --- LOGIC & VARIABLES GENERATORS ---
+GC.forBlock['logic_if'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', ORDER_ATOMIC) || 'false'}) {\n${g.statementToCode(b, 'DO')}}\n`;
+GC.forBlock['logic_if_else'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', ORDER_ATOMIC) || 'false'}) {\n${g.statementToCode(b, 'DO')}} else {\n${g.statementToCode(b, 'ELSE')}}\n`;
+GC.forBlock['logic_compare'] = (b, g) => { 
+    const op = { 'EQ': '===', 'NEQ': '!==', 'LT': '<', 'GT': '>' }[b.getFieldValue('OP')]; 
+    return [`(${g.valueToCode(b, 'A', ORDER_ATOMIC) || '0'} ${op} ${g.valueToCode(b, 'B', ORDER_ATOMIC) || '0'})`, ORDER_ATOMIC]; 
+};
+GC.forBlock['logic_boolean'] = (b) => [b.getFieldValue('BOOL') === 'TRUE' ? 'true' : 'false', ORDER_ATOMIC];
+GC.forBlock['init_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || '0'});\n`;
+GC.forBlock['set_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || '0'});\n`;
+GC.forBlock['get_var'] = (b) => [`App.getVariable('${b.getFieldValue('VAR')}')`, ORDER_ATOMIC];
+GC.forBlock['change_var'] = (b, g) => `App.setVariable('${b.getFieldValue('VAR')}', App.getVariable('${b.getFieldValue('VAR')}') + ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || '0'});\n`;
+GC.forBlock['display_var'] = (b) => `App.displayVariable('${b.getFieldValue('VAR')}', '${b.getFieldValue('LABEL')}');\n`;
+GC.forBlock['is_touching'] = (b) => [`App.checkCollisionBetween('${b.getFieldValue('A')}', '${b.getFieldValue('B')}')`, ORDER_ATOMIC];
+
+// --- CLONE & RANDOM GENERATORS ---
+GC.forBlock['clone_object'] = wrap((b, g) => {
+    var original = g.valueToCode(b, 'ORIGINAL', ORDER_ATOMIC) || "''";
+    var newId = g.valueToCode(b, 'NEWID', ORDER_ATOMIC) || "''";
+    return `App.cloneObject(${original}, ${newId});\n`;
 });
 
-// Misc Generators
-javascriptGenerator.forBlock['colour_picker_custom'] = (b, g) => [g.quote_(b.getFieldValue('COL')), 0];
-javascriptGenerator.forBlock['math_number'] = (b) => [b.getFieldValue('NUM'), 0];
-javascriptGenerator.forBlock['text'] = (b, g) => [g.quote_(b.getFieldValue('TEXT')), 0];
-javascriptGenerator.forBlock['text_join_simple'] = (b, g) => [`(${g.valueToCode(b, 'A', 0) || "''"} + "" + ${g.valueToCode(b, 'B', 0) || "''"})`, 0];
-javascriptGenerator.forBlock['set_light_intensity'] = (b, g) => `App.setLightIntensity(${g.valueToCode(b, 'VALUE', 0) || "1.0"});\n`;
-javascriptGenerator.forBlock['ui_animate'] = function (block) {
-    const id = block.getFieldValue('ID');
-    const effect = block.getFieldValue('EFFECT');
-    return `App.animateUI('${id}', '${effect}');\n`;
-};
-javascriptGenerator.forBlock['set_floor_texture'] = function(block, generator) {
-  var value_texture = generator.valueToCode(block, 'TEXTURE', javascriptGenerator.ORDER_ATOMIC) || "''";
-  return `App.setFloor(${value_texture});\n`;
-};
-javascriptGenerator.forBlock['ui_hover_style'] = function (block) {
-    const id = block.getFieldValue('ID');
-    const scale = block.getFieldValue('SCALE');
-    const bright = block.getFieldValue('BRIGHT');
-    return `App.setHoverEffect('${id}', ${scale}, ${bright});\n`;
-};
-javascriptGenerator.forBlock['set_skybox_texture'] = function(block, generator) {
- 
-  var value_texture = generator.valueToCode(block, 'TEXTURE', javascriptGenerator.ORDER_ATOMIC);
-  
-  
-  if (!value_texture) value_texture = "''";
-
-  return `App.setSkybox(${value_texture});\n`;
-};
-javascriptGenerator.forBlock['player_jump'] = function(block, generator) {
-  var value_force = generator.valueToCode(block, 'FORCE', javascriptGenerator.ORDER_ATOMIC) || "0.3";
-  return `App.jump(${value_force});\n`;
-};
-javascriptGenerator.forBlock['get_matrix_value'] = function(block, generator) {
-  var matrix = generator.valueToCode(block, 'MATRIX', javascriptGenerator.ORDER_ATOMIC) || '[]';
-  var row = generator.valueToCode(block, 'ROW', javascriptGenerator.ORDER_ATOMIC) || '0';
-  var col = generator.valueToCode(block, 'COL', javascriptGenerator.ORDER_ATOMIC) || '0';
-
-  // Sicherer Zugriff: Matrix[row][col]
-  var code = `(function(m, r, c) { 
-    return (m && m[r] && m[r][c] !== undefined) ? m[r][c] : 0; 
-  })(${matrix}, ${row}, ${col})`;
-  
-  return [code, javascriptGenerator.ORDER_FUNCTION_CALL];
-};
-javascriptGenerator.forBlock['get_random_number'] = function(block, generator) {
-      var min = generator.valueToCode(block, 'MIN', javascriptGenerator.ORDER_ATOMIC) || '0';
-      var max = generator.valueToCode(block, 'MAX', javascriptGenerator.ORDER_ATOMIC) || '100';
-
-      var code = `Math.floor(Math.random() * (${max} - ${min} + 1) + parseInt(${min}))`;
-      return [code, javascriptGenerator.ORDER_NONE];
-};
-javascriptGenerator.forBlock['clone_object'] = function(block, generator) {
-  var original = generator.valueToCode(block, 'ORIGINAL', javascriptGenerator.ORDER_ATOMIC) || "''";
-  var newId = generator.valueToCode(block, 'NEWID', javascriptGenerator.ORDER_ATOMIC) || "''";
-  
-  return `App.cloneObject(${original}, ${newId});\n`;
+GC.forBlock['get_random_number'] = function(block, generator) {
+    var min = generator.valueToCode(block, 'MIN', ORDER_ATOMIC) || '0';
+    var max = generator.valueToCode(block, 'MAX', ORDER_ATOMIC) || '100';
+    var code = `Math.floor(Math.random() * (${max} - ${min} + 1) + parseInt(${min}))`;
+    return [code, ORDER_NONE];
 };
 
+GC.forBlock['get_matrix_value'] = function(block, generator) {
+    var matrix = generator.valueToCode(block, 'MATRIX', ORDER_ATOMIC) || '[]';
+    var row = generator.valueToCode(block, 'ROW', ORDER_ATOMIC) || '0';
+    var col = generator.valueToCode(block, 'COL', ORDER_ATOMIC) || '0';
+    var code = `(function(m, r, c) { return (m && m[r] && m[r][c] !== undefined) ? m[r][c] : 0; })(${matrix}, ${row}, ${col})`;
+    return [code, ORDER_FUNCTION_CALL];
+};
+
+// --- UI GENERATORS ---
+GC.forBlock['create_ui'] = wrap(b => `App.createUI('${b.getFieldValue('TYPE')}', '${b.getFieldValue('ID')}', ${b.getFieldValue('X')}, ${b.getFieldValue('Y')}, ${b.getFieldValue('W')}, ${b.getFieldValue('H')}, '${b.getFieldValue('TEXT')}', '${b.getFieldValue('TEX') === 'none' ? '' : b.getFieldValue('TEX')}', null);\n`);
+GC.forBlock['ui_button_pressed'] = (b) => [`App.isButtonClicked('${b.getFieldValue('ID')}')`, ORDER_ATOMIC];
+GC.forBlock['remove_ui'] = wrap(b => `App.removeUI('${b.getFieldValue('ID')}');\n`);
+GC.forBlock['set_ui_text'] = wrap((b, g) => `App.setUIText('${b.getFieldValue('ID')}', ${g.valueToCode(b, 'TEXT', ORDER_ATOMIC) || "''"});\n`);
+GC.forBlock['style_ui'] = wrap(b => {
+    return `App.styleUI('${b.getFieldValue('ID')}', { radius: ${b.getFieldValue('RADIUS')}, bgColor: '${b.getFieldValue('BG_COLOR')}', opacity: ${b.getFieldValue('OPACITY')}, strokeWidth: ${b.getFieldValue('STROKE_W')}, strokeColor: '${b.getFieldValue('STROKE_C')}' });\n`;
+});
+GC.forBlock['ui_animate'] = wrap(b => `App.animateUI('${b.getFieldValue('ID')}', '${b.getFieldValue('EFFECT')}');\n`);
+GC.forBlock['ui_hover_style'] = wrap(b => `App.setHoverEffect('${b.getFieldValue('ID')}', ${b.getFieldValue('SCALE')}, ${b.getFieldValue('BRIGHT')});\n`);
+
+// --- WORLD DESIGN GENERATORS ---
+GC.forBlock['set_floor_texture'] = wrap((b, g) => `App.setFloor(${g.valueToCode(b, 'TEXTURE', ORDER_ATOMIC) || "''"});\n`);
+GC.forBlock['set_skybox_texture'] = wrap((b, g) => `App.setSkybox(${g.valueToCode(b, 'TEXTURE', ORDER_ATOMIC) || "''"});\n`);
+GC.forBlock['set_light_intensity'] = wrap((b, g) => `App.setLightIntensity(${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || "1.0"});\n`);
+
+// --- MATH & TEXT GENERATORS ---
+GC.forBlock['colour_picker_custom'] = (b, g) => [g.quote_(b.getFieldValue('COL')), ORDER_ATOMIC];
+GC.forBlock['math_number'] = (b) => [b.getFieldValue('NUM'), ORDER_ATOMIC];
+GC.forBlock['text'] = (b, g) => [g.quote_(b.getFieldValue('TEXT')), ORDER_ATOMIC];
+GC.forBlock['text_join_simple'] = (b, g) => [`(${g.valueToCode(b, 'A', ORDER_ATOMIC) || "''"} + "" + ${g.valueToCode(b, 'B', ORDER_ATOMIC) || "''"})`, ORDER_ATOMIC];
 
 
 
