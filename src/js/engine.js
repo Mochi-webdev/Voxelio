@@ -909,9 +909,15 @@ window.UI = {
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
 App.setUIVisibility = function(id, visible) {
-    const element = document.getElementById(id); // Oder dein UI-System-Lookup
-    if (element) {
-        element.style.display = visible ? "block" : "none";
+    const uiElement = document.getElementById(id);
+    if (uiElement) {
+        if (visible) {
+            uiElement.classList.add('visible');
+            uiElement.style.opacity = "1";
+        } else {
+            uiElement.classList.remove('visible');
+            uiElement.style.opacity = "0";
+        }
     }
 };
 
