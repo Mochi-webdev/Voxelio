@@ -916,43 +916,36 @@ window.UI = {
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
 App.setUIVisibility = function(id, visible) {
-    const trySet = (attempts) => {
-        // Suche nach der ID direkt ODER mit dem "ui-" Präfix
-        const el = document.getElementById(id) || document.getElementById("ui-" + id);
-        
-        if (!el) {
-            if (attempts > 0) {
-                // Falls das UI gerade erst gespawned wurde, gib ihm 10ms Zeit
-                setTimeout(() => trySet(attempts - 1), 10);
-            } else {
-                console.warn(`UI mit ID ${id} wurde nicht gefunden (auch nicht als ui-${id}).`);
-            }
-            return;
-        }
+    console.log(`--- Suche nach UI: "${id}" ---`);
+    
+    // 1. Liste alle IDs auf, die aktuell auf der Seite existieren
+    const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+    console.log("Alle existierenden IDs auf der Seite:", allIds);
 
-        if (visible) {
-            // Einblenden
-            el.style.display = "flex"; // Nutze flex, da deine createUI flex nutzt
-            // Kleiner Delay für die CSS-Transition
-            setTimeout(() => {
-                el.style.opacity = "1";
-                el.style.pointerEvents = "auto";
-            }, 10);
-        } else {
-            // Ausblenden
-            el.style.opacity = "0";
-            el.style.pointerEvents = "none";
-            // Warte auf die Transition (300ms), bevor display:none gesetzt wird
-            setTimeout(() => {
-                // Sicherheitscheck: Nur auf none setzen, wenn es nicht gerade wieder eingeblendet wurde
-                if (el.style.opacity === "0") {
-                    el.style.display = "none";
-                }
-            }, 300);
-        }
-    };
+    // 2. Suche das Element
+    const el = document.getElementById(id) || document.getElementById("ui-" + id);
 
-    trySet(10); // 10 Versuche (insg. 100ms) sind sicherer für dynamisch erstellte UIs
+    if (!el) {
+        console.error(`FEHLER: UI "${id}" nicht im DOM gefunden.`);
+        // Prüfe, ob es im internen Speicher ist
+        if (this.uiElements && this.uiElements[id]) {
+            console.warn(`HINWEIS: UI existiert im App-Speicher, aber wurde aus dem HTML gelöscht!`);
+        }
+        return;
+    }
+
+    console.log("Erfolg! Element gefunden:", el);
+
+    // 3. Sichtbarkeit anwenden
+    if (visible) {
+        el.style.display = "flex";
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+    } else {
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        setTimeout(() => { if(el.style.opacity === "0") el.style.display = "none"; }, 300);
+    }
 };
 App.getObjectPosition = function(name) {
     const obj = this.scene.getObjectByName(name);
