@@ -937,35 +937,29 @@ window.UI = {
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
 App.setUIVisibility = function(id, visible) {
-    console.log(`--- Suche nach UI: "${id}" ---`);
-    
-    // 1. Liste alle IDs auf, die aktuell auf der Seite existieren
-    const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
-    console.log("Alle existierenden IDs auf der Seite:", allIds);
-
-    // 2. Suche das Element
     const el = document.getElementById(id) || document.getElementById("ui-" + id);
+    if (!el) return;
 
-    if (!el) {
-        console.error(`FEHLER: UI "${id}" nicht im DOM gefunden.`);
-        // Prüfe, ob es im internen Speicher ist
-        if (this.uiElements && this.uiElements[id]) {
-            console.warn(`HINWEIS: UI existiert im App-Speicher, aber wurde aus dem HTML gelöscht!`);
-        }
-        return;
-    }
+    // NEU: Wenn der Status schon stimmt, brich ab (verhindert Loop-Fehler)
+    const isCurrentlyVisible = el.style.display !== "none";
+    if (isCurrentlyVisible === visible) return; 
 
-    console.log("Erfolg! Element gefunden:", el);
-
-    // 3. Sichtbarkeit anwenden
     if (visible) {
         el.style.display = "flex";
-        el.style.opacity = "1";
-        el.style.pointerEvents = "auto";
+        // Kleiner Delay für den Browser-Refresh vor der Animation
+        requestAnimationFrame(() => {
+            el.style.opacity = "1";
+            el.style.pointerEvents = "auto";
+        });
     } else {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
-        setTimeout(() => { if(el.style.opacity === "0") el.style.display = "none"; }, 300);
+        // Warte auf Ende der Transition (0.3s)
+        setTimeout(() => {
+            if (el.style.opacity === "0") {
+                el.style.display = "none";
+            }
+        }, 300);
     }
 };
 App.getObjectPosition = function(name) {
