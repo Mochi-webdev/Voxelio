@@ -404,35 +404,33 @@ GC.forBlock['ui_proximity_trigger'] = function(block, generator) {
     const objName = block.getFieldValue('OBJ_NAME');
     const range = generator.valueToCode(block, 'RANGE', Blockly.JavaScript.ORDER_ATOMIC) || "5";
 
-    // Einzigartige Variable für diesen spezifischen Trigger
-    const stateVar = `window.state_${uiId}_${objName.replace(/[^a-zA-Z0-9]/g, '')}`;
+    // Eindeutiger Key für diesen Trigger
+    const stateKey = `proximity_${uiId}_${objName.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     return `
-${stateVar} = false; // Initialzustand
+window['${stateKey}'] = false; 
 
 App.onTick(() => {
     const pPos = App.getPlayerPosition(); 
     const oPos = App.getObjectPosition('${objName}');
     
     if (pPos && oPos) {
-        const dist = Math.sqrt(
-            Math.pow(pPos.x - oPos.x, 2) + 
-            Math.pow(pPos.y - oPos.y, 2) + 
-            Math.pow(pPos.z - oPos.z, 2)
-        );
+        const dx = pPos.x - oPos.x;
+        const dy = pPos.y - oPos.y;
+        const dz = pPos.z - oPos.z;
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
         
         const isClose = dist <= ${range};
         
-        // NUR aufrufen, wenn sich der Zustand geändert hat (Performance!)
-        if (isClose !== ${stateVar}) {
-            ${stateVar} = isClose;
+        // Vergleich mit dem globalen Window-State
+        if (isClose !== window['${stateKey}']) {
+            window['${stateKey}'] = isClose;
+            console.log("Trigger Update: ${uiId} ist nun " + (isClose ? "Sichtbar" : "Versteckt"));
             App.setUIVisibility('${uiId}', isClose);
-            console.log("UI ${uiId} Sichtbarkeit geändert auf: " + isClose);
         }
     }
 });\n`;
 };
-
 GC.forBlock['player_interact_with_object'] = wrap((b, g) => {
     const key = b.getFieldValue('KEY');
     const objName = b.getFieldValue('OBJ_NAME');

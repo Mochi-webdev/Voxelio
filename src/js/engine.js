@@ -940,18 +940,26 @@ App.setUIVisibility = function(id, visible) {
     const el = document.getElementById(id) || document.getElementById("ui-" + id);
     if (!el) return;
 
+    // Bestehende Timer stoppen, um Konflikte zu vermeiden
+    if (el._hideTimer) clearTimeout(el._hideTimer);
+
     if (visible) {
-        el.style.display = "flex"; 
+        el.style.display = "flex";
+        // Erzwinge einen Reflow, damit die Animation startet
+        void el.offsetWidth; 
         el.style.opacity = "1";
         el.style.pointerEvents = "auto";
+        el.style.zIndex = "1000";
     } else {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
-        // WICHTIG: Nach der Animation aus dem DOM-Layout entfernen
-        setTimeout(() => {
+        
+        // Timer speichern, damit wir ihn abbrechen können, falls man schnell zurückkehrt
+        el._hideTimer = setTimeout(() => {
             if (el.style.opacity === "0") {
                 el.style.display = "none";
             }
+            el._hideTimer = null;
         }, 300);
     }
 };
