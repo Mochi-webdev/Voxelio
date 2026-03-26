@@ -272,15 +272,6 @@ Blockly.Blocks['player_interact_with_object'] = {
     this.setColour(60); // Event-Farbe
   }
 };
-GC.forBlock['set_ui_visible_manual'] = function(block) {
-    // Hole den Wert aus dem Textfeld "ID" des Blocks
-    const uiId = block.getFieldValue('ID'); 
-    const state = block.getFieldValue('STATE'); // "true" oder "false"
-
-    // Erzeuge den fertigen Code-String
-    return `App.setUIVisibility('${uiId}', ${state});\n`;
-};
-
 
 
 // --- GENERATORS CONFIG ---
@@ -428,6 +419,7 @@ App.onTick(() => {
     }
 });\n`;
 });
+
 GC.forBlock['player_interact_with_object'] = wrap((b, g) => {
     const key = b.getFieldValue('KEY');
     const objName = b.getFieldValue('OBJ_NAME');
@@ -453,12 +445,16 @@ App.registerKeyEvent('${key}', () => {
     }
 });\n`;
 });
-GC.forBlock['set_ui_visible_manual'] = wrap((b) => {
-    const uiId = b.getFieldValue('ID');
-    const state = b.getFieldValue('STATE'); // "true" oder "false" als String
-    
+GC.forBlock['set_ui_visible_manual'] = function(block) {
+    // Hole den Wert aus dem Textfeld "ID" des Blocks
+    const uiId = block.getFieldValue('ID'); 
+    const state = block.getFieldValue('STATE'); // "true" oder "false"
+
+    // Erzeuge den fertigen Code-String
     return `App.setUIVisibility('${uiId}', ${state});\n`;
-});
+};
+
+
 
 
 window.Editor = {
