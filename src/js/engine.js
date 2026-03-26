@@ -56,7 +56,7 @@ window.Editor = {
     showModal() { document.getElementById('nameModal').style.display = 'flex'; },
     hideModal() { document.getElementById('nameModal').style.display = 'none'; },
     getAllCode() {
-        this.updateCurrentScriptBuffer(); 
+        this.updateCurrentScriptBuffer();
         let fullCode = "";
         const generator = window.javascriptGenerator || Blockly.JavaScript;
 
@@ -88,7 +88,7 @@ window.App = {
     isRunning: false,
     fpcPlayer: null,
     solids: [],
-    
+
     mouseDelta: { x: 0, y: 0 },
     textures: {},
     init() {
@@ -138,7 +138,7 @@ window.App = {
 
         this.animate();
     },
-    cloneObject: function(originalName, newId) {
+    cloneObject: function (originalName, newId) {
         const original = this.objects[originalName];
         if (!original) {
             console.warn("Clone-Fehler: Objekt '" + originalName + "' nicht gefunden.");
@@ -147,17 +147,17 @@ window.App = {
 
         // 1. Objekt klonen
         const clone = original.clone();
-        
+
         // 2. Neue ID zuweisen und im System registrieren
         clone.name = newId;
         this.objects[newId] = clone;
-        
+
         // 3. Zur Szene hinzufügen
         this.scene.add(clone);
-        
+
         // 4. Explorer aktualisieren, damit der Klon in der Liste erscheint
         this.updateExplorer();
-        
+
         console.log(`Objekt '${originalName}' wurde als '${newId}' geklont.`);
     },
 
@@ -220,29 +220,29 @@ window.App = {
     },
 
     animate() {
-    requestAnimationFrame(() => this.animate());
+        requestAnimationFrame(() => this.animate());
 
-    if (this.isRunning) {
-        // 1. Blickrichtung aktualisieren (Maus)
-        if (this.fpcPlayer) this.updateFPCLook(); 
+        if (this.isRunning) {
+            // 1. Blickrichtung aktualisieren (Maus)
+            if (this.fpcPlayer) this.updateFPCLook();
 
-        // 2. Physik (Schwerkraft/Boden)
-        this.updatePhysics();
+            // 2. Physik (Schwerkraft/Boden)
+            this.updatePhysics();
 
-        // 3. Blockly-Events (onTick)
-        this.tickListeners.forEach(f => f());
+            // 3. Blockly-Events (onTick)
+            this.tickListeners.forEach(f => f());
 
-        // 4. Objekt-Animationen
-        Object.values(this.objects).forEach(o => {
-            if (o.userData && o.userData.animations) {
-                o.userData.animations.forEach(f => f());
-            }
-        });
-    }
+            // 4. Objekt-Animationen
+            Object.values(this.objects).forEach(o => {
+                if (o.userData && o.userData.animations) {
+                    o.userData.animations.forEach(f => f());
+                }
+            });
+        }
 
-    if (this.controls && this.controls.enabled) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
-},
+        if (this.controls && this.controls.enabled) this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    },
 
     setupFPC(name) {
         this.fpcPlayer = this.objects[name];
@@ -268,14 +268,20 @@ window.App = {
 
 
     run() {
-        this.stop();
+        this.stop(); // Das hier MUSS zuerst kommen, um alles zu säubern!
         this.isRunning = true;
-        document.body.classList.add('running');
+
+        // UI-Elemente im DOM finden und verstecken, falls sie noch da sind
+        Object.values(this.uiElements).forEach(el => {
+            el.style.display = "none";
+            el.style.opacity = "0";
+        });
+
         try {
-            eval(Editor.getAllCode());
+            const code = Editor.getAllCode();
+            eval(code);
         } catch (e) {
-            console.error("Fehler im Code:", e);
-            this.stop();
+            console.error("Code Fehler:", e);
         }
     },
     removeUI(id) {
@@ -449,34 +455,34 @@ window.App = {
         }
     },
     toggleFullscreen: function (enable) {
-    const panel = document.getElementById('sidePanel');
-    const resizer = document.getElementById('resizer');
-    
-    // Die beiden Buttons holen
-    const btnMax = document.getElementById('goFullscreen');
-    const btnMin = document.getElementById('exitFullscreen');
+        const panel = document.getElementById('sidePanel');
+        const resizer = document.getElementById('resizer');
 
-    if (enable) {
-        panel.classList.add('fullscreen');
-        if (resizer) resizer.style.display = 'none';
-        
-        // Buttons umschalten
-        if (btnMax) btnMax.style.display = 'none';
-        if (btnMin) btnMin.style.display = 'block';
-    } else {
-        panel.classList.remove('fullscreen');
-        if (resizer) resizer.style.display = 'block';
-        
-        // Buttons umschalten
-        if (btnMax) btnMax.style.display = 'block';
-        if (btnMin) btnMin.style.display = 'none';
-    }
+        // Die beiden Buttons holen
+        const btnMax = document.getElementById('goFullscreen');
+        const btnMin = document.getElementById('exitFullscreen');
 
-    // Three.js Resize auslösen
-    setTimeout(() => {
-        this.onWindowResize();
-    }, 100);
-},
+        if (enable) {
+            panel.classList.add('fullscreen');
+            if (resizer) resizer.style.display = 'none';
+
+            // Buttons umschalten
+            if (btnMax) btnMax.style.display = 'none';
+            if (btnMin) btnMin.style.display = 'block';
+        } else {
+            panel.classList.remove('fullscreen');
+            if (resizer) resizer.style.display = 'block';
+
+            // Buttons umschalten
+            if (btnMax) btnMax.style.display = 'block';
+            if (btnMin) btnMin.style.display = 'none';
+        }
+
+        // Three.js Resize auslösen
+        setTimeout(() => {
+            this.onWindowResize();
+        }, 100);
+    },
 
     // Hilfsfunktion für das Resize (sollte in deiner engine.js sein)
     onWindowResize: function () {
@@ -641,84 +647,84 @@ window.App = {
 
 
     uiElements: {},
-createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
-    // 1. Altes Element entfernen, falls ID schon existiert
-    if (this.uiElements[id]) {
-        this.uiElements[id].remove();
-    }
-
-    const el = document.createElement(type === 'button' ? 'button' : 'div');
-    
-    // WICHTIG: Benutze die reine ID, damit getElementById(id) funktioniert
-    el.id = id; 
-
-    // Basis-Styling
-    el.style.position = "absolute";
-    el.style.left = x + "px";
-    el.style.top = y + "px";
-    el.style.width = w + "px";
-    el.style.height = h + "px";
-    el.style.zIndex = "100";
-    el.style.display = "flex"; // Standardmäßig flex, aber wir steuern Sichtbarkeit über opacity/display
-    
-    // NEU: Transition für weiches Ein-/Ausblenden hinzufügen
-    el.style.transition = "opacity 0.3s ease";
-    el.style.opacity = "1"; // Standardmäßig voll sichtbar beim Erstellen
-
-    // ... (Dein restliches Styling: alignItems, font, etc.) ...
-    el.style.alignItems = "center";
-    el.style.justifyContent = "center";
-    el.style.fontFamily = "sans-serif";
-    el.style.boxSizing = "border-box";
-    el.style.border = "none";
-
-    // Button Logik
-    if (type === 'button') {
-        el.innerText = text;
-        el.style.cursor = "pointer";
-        el.onclick = () => {
-            this.setVariable(`btn_${id}_clicked`, true);
-        };
-    }
-
-    // Scrolling Frame Logik
-    if (type === 'scrolling_frame') {
-        el.style.overflowY = "auto";
-        el.style.overflowX = "hidden";
-        el.style.display = "block"; 
-    }
-
-    // Textur oder Default-Farben
-    if (texture && texture !== "none" && this.textures[texture]) {
-        el.style.backgroundImage = `url(${this.textures[texture]})`;
-        el.style.backgroundSize = "100% 100%";
-        el.style.backgroundRepeat = "no-repeat";
-        el.style.backgroundColor = "transparent";
-    } else {
-        if (type === 'button') {
-            el.style.backgroundColor = "#444";
-            el.style.color = "white";
-        } else {
-            el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-            el.style.border = "1px solid #555";
+    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+        // 1. Altes Element entfernen, falls ID schon existiert
+        if (this.uiElements[id]) {
+            this.uiElements[id].remove();
         }
-    }
 
-    // Container finden und hinzufügen
-    let targetContainer = document.getElementById('canvas3d');
-    if (parentId && this.uiElements[parentId]) {
-        targetContainer = this.uiElements[parentId];
-    }
+        const el = document.createElement(type === 'button' ? 'button' : 'div');
 
-    if (targetContainer) {
-        targetContainer.appendChild(el);
-        this.uiElements[id] = el; // Hier speichern wir die Referenz
-    } else {
-        console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
-    }
+        // WICHTIG: Benutze die reine ID, damit getElementById(id) funktioniert
+        el.id = id;
 
-    this.updateExplorer();
-},
+        // Basis-Styling
+        el.style.position = "absolute";
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = w + "px";
+        el.style.height = h + "px";
+        el.style.zIndex = "100";
+        el.style.display = "flex"; // Standardmäßig flex, aber wir steuern Sichtbarkeit über opacity/display
+
+        // NEU: Transition für weiches Ein-/Ausblenden hinzufügen
+        el.style.transition = "opacity 0.3s ease";
+        el.style.opacity = "1"; // Standardmäßig voll sichtbar beim Erstellen
+
+        // ... (Dein restliches Styling: alignItems, font, etc.) ...
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+        el.style.fontFamily = "sans-serif";
+        el.style.boxSizing = "border-box";
+        el.style.border = "none";
+
+        // Button Logik
+        if (type === 'button') {
+            el.innerText = text;
+            el.style.cursor = "pointer";
+            el.onclick = () => {
+                this.setVariable(`btn_${id}_clicked`, true);
+            };
+        }
+
+        // Scrolling Frame Logik
+        if (type === 'scrolling_frame') {
+            el.style.overflowY = "auto";
+            el.style.overflowX = "hidden";
+            el.style.display = "block";
+        }
+
+        // Textur oder Default-Farben
+        if (texture && texture !== "none" && this.textures[texture]) {
+            el.style.backgroundImage = `url(${this.textures[texture]})`;
+            el.style.backgroundSize = "100% 100%";
+            el.style.backgroundRepeat = "no-repeat";
+            el.style.backgroundColor = "transparent";
+        } else {
+            if (type === 'button') {
+                el.style.backgroundColor = "#444";
+                el.style.color = "white";
+            } else {
+                el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                el.style.border = "1px solid #555";
+            }
+        }
+
+        // Container finden und hinzufügen
+        let targetContainer = document.getElementById('canvas3d');
+        if (parentId && this.uiElements[parentId]) {
+            targetContainer = this.uiElements[parentId];
+        }
+
+        if (targetContainer) {
+            targetContainer.appendChild(el);
+            this.uiElements[id] = el; // Hier speichern wir die Referenz
+        } else {
+            console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
+        }
+
+        this.updateExplorer();
+    },
 
     isButtonClicked(id) {
         const varName = `btn_${id}_clicked`;
@@ -776,7 +782,7 @@ createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
             el.style.filter = "brightness(100%)";
         };
     },
-    
+
     styleUI(id, props) {
         const el = this.uiElements[id];
         if (!el) return;
@@ -800,7 +806,7 @@ createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
     isGrounded: true,  // Prüft, ob der Spieler den Boden berührt
     gravity: -0.015,   // Wie stark die Schwerkraft zieht
 
-    jump: function(force) {
+    jump: function (force) {
         if (this.isGrounded) {
             this.velocityy = parseFloat(force);
             this.isGrounded = false;
@@ -808,22 +814,22 @@ createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
         }
     },
 
- updatePhysics: function() {
-    if (!this.isRunning || !this.fpcPlayer) return;
+    updatePhysics: function () {
+        if (!this.isRunning || !this.fpcPlayer) return;
 
-    // Schwerkraft
-    this.velocityy = (this.velocityy || 0) + (this.gravity || -0.015);
-    this.fpcPlayer.position.y += this.velocityy;
+        // Schwerkraft
+        this.velocityy = (this.velocityy || 0) + (this.gravity || -0.015);
+        this.fpcPlayer.position.y += this.velocityy;
 
-    // Boden-Check (y=0)
-    if (this.fpcPlayer.position.y <= 0) {
-        this.fpcPlayer.position.y = 0;
-        this.velocityy = 0;
-        this.isGrounded = true;
-    } else {
-        this.isGrounded = false;
-    }
-},
+        // Boden-Check (y=0)
+        if (this.fpcPlayer.position.y <= 0) {
+            this.fpcPlayer.position.y = 0;
+            this.velocityy = 0;
+            this.isGrounded = true;
+        } else {
+            this.isGrounded = false;
+        }
+    },
 };
 
 window.addEventListener('load', () => App.init());
@@ -936,36 +942,36 @@ window.UI = {
 };
 // In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
-App.setUIVisibility = function(id, visible) {
+App.setUIVisibility = function (id, visible) {
     const el = document.getElementById(id) || document.getElementById("ui-" + id);
     if (!el) return;
 
-    // Bestehende Timer stoppen, um Konflikte zu vermeiden
+    // Alle laufenden Timer für dieses Element stoppen
     if (el._hideTimer) clearTimeout(el._hideTimer);
 
     if (visible) {
         el.style.display = "flex";
-        // Erzwinge einen Reflow, damit die Animation startet
-        void el.offsetWidth; 
+        // Kleiner Trick: OffsetWidth erzwingt, dass der Browser das "flex" registriert
+        void el.offsetWidth;
         el.style.opacity = "1";
         el.style.pointerEvents = "auto";
-        el.style.zIndex = "1000";
     } else {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
-        
-        // Timer speichern, damit wir ihn abbrechen können, falls man schnell zurückkehrt
+
+        // Wir setzen einen Timer, aber wir setzen ZUSÄTZLICH eine Notbremse
         el._hideTimer = setTimeout(() => {
+            // Nur ausblenden, wenn die Opacity immer noch 0 ist
             if (el.style.opacity === "0") {
                 el.style.display = "none";
+                console.log(`UI ${id} wurde jetzt final auf display:none gesetzt.`);
             }
-            el._hideTimer = null;
         }, 300);
     }
 };
-App.getPlayerPosition = function() {
+App.getPlayerPosition = function () {
     // WICHTIG: Nutze fpcPlayer, da dein setupFPC diesen Namen verwendet
-    const p = this.fpcPlayer; 
+    const p = this.fpcPlayer;
     if (!p) return null;
 
     const target = new THREE.Vector3();
@@ -973,9 +979,9 @@ App.getPlayerPosition = function() {
     return { x: target.x, y: target.y, z: target.z };
 };
 
-App.getObjectPosition = function(name) {
+App.getObjectPosition = function (name) {
     // Suche in der App.objects Liste
-    const obj = this.objects[name]; 
+    const obj = this.objects[name];
     if (!obj) return null;
 
     const target = new THREE.Vector3();
