@@ -917,35 +917,42 @@ window.UI = {
 
 App.setUIVisibility = function(id, visible) {
     const trySet = (attempts) => {
-        const el = document.getElementById(id);
+        // Suche nach der ID direkt ODER mit dem "ui-" Präfix
+        const el = document.getElementById(id) || document.getElementById("ui-" + id);
         
         if (!el) {
             if (attempts > 0) {
-                // Wenn nicht gefunden, in 10ms nochmal probieren (bis zu 5-mal)
+                // Falls das UI gerade erst gespawned wurde, gib ihm 10ms Zeit
                 setTimeout(() => trySet(attempts - 1), 10);
             } else {
-                console.warn(`UI mit ID ${id} wurde auch nach mehrmaligem Versuchen nicht gefunden.`);
+                console.warn(`UI mit ID ${id} wurde nicht gefunden (auch nicht als ui-${id}).`);
             }
             return;
         }
 
-        // --- Hier dein funktionierender Logik-Teil ---
         if (visible) {
-            el.style.display = "block";
+            // Einblenden
+            el.style.display = "flex"; // Nutze flex, da deine createUI flex nutzt
+            // Kleiner Delay für die CSS-Transition
             setTimeout(() => {
                 el.style.opacity = "1";
                 el.style.pointerEvents = "auto";
             }, 10);
         } else {
+            // Ausblenden
             el.style.opacity = "0";
             el.style.pointerEvents = "none";
+            // Warte auf die Transition (300ms), bevor display:none gesetzt wird
             setTimeout(() => {
-                if (el.style.opacity === "0") el.style.display = "none";
+                // Sicherheitscheck: Nur auf none setzen, wenn es nicht gerade wieder eingeblendet wurde
+                if (el.style.opacity === "0") {
+                    el.style.display = "none";
+                }
             }, 300);
         }
     };
 
-    trySet(5); // Starte den Versuch mit 5 Wiederholungen
+    trySet(10); // 10 Versuche (insg. 100ms) sind sicherer für dynamisch erstellte UIs
 };
 App.getObjectPosition = function(name) {
     const obj = this.scene.getObjectByName(name);
