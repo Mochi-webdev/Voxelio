@@ -745,6 +745,7 @@ window.App = {
             el.style.filter = "brightness(100%)";
         };
     },
+    
     styleUI(id, props) {
         const el = this.uiElements[id];
         if (!el) return;
@@ -904,4 +905,22 @@ window.UI = {
             console.error("Kritischer Fehler beim Laden aus der Cloud:", error);
         }
     }
+};
+// In deiner Engine-Datei (z.B. engine.js) hinzufügen:
+
+App.setUIVisibility = function(id, visible) {
+    const element = document.getElementById(id); // Oder dein UI-System-Lookup
+    if (element) {
+        element.style.display = visible ? "block" : "none";
+    }
+};
+
+App.getObjectPosition = function(name) {
+    const obj = this.scene.getObjectByName(name);
+    return obj ? obj.position : null;
+};
+
+App.getPlayerPosition = function() {
+    // Falls du den First Person Controller nutzt:
+    return this.player ? this.player.position : {x:0, y:0, z:0};
 };

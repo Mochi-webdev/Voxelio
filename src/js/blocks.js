@@ -238,6 +238,23 @@ Blockly.Blocks['clone_object'] = {
     this.setTooltip("Erstellt eine exakte Kopie eines Objekts.");
   }
 };
+Blockly.Blocks['ui_proximity_trigger'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Zeige UI")
+        .appendField(new Blockly.FieldTextInput("meinUI"), "UI_ID");
+    this.appendDummyInput()
+        .appendField("wenn nah an Objekt")
+        .appendField(new Blockly.FieldTextInput("Schatztruhe"), "OBJ_NAME");
+    this.appendValueInput("RANGE")
+        .setCheck("Number")
+        .appendField("Reichweite:");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(260);
+    this.setTooltip("Blendet eine UI ein, wenn der Spieler nah genug am Objekt ist, sonst aus.");
+  }
+};
 
 
 // --- GENERATORS CONFIG ---
@@ -352,7 +369,39 @@ GC.forBlock['math_number'] = (b) => [b.getFieldValue('NUM'), ORDER_ATOMIC];
 GC.forBlock['text'] = (b, g) => [g.quote_(b.getFieldValue('TEXT')), ORDER_ATOMIC];
 GC.forBlock['text_join_simple'] = (b, g) => [`(${g.valueToCode(b, 'A', ORDER_ATOMIC) || "''"} + "" + ${g.valueToCode(b, 'B', ORDER_ATOMIC) || "''"})`, ORDER_ATOMIC];
 
+GC.forBlock['ui_proximity_trigger'] = wrap((b, g) => {
+    const uiId = b.getFieldValue('UI_ID');
+    const objName = b.getFieldValue('OBJ_NAME');
+    const range = g.valueToCode(b, 'RANGE', ORDER_ATOMIC) || "5";
 
+    // Wir nutzen eine Variable außerhalb des Ticks, um den Status zu speichern
+    return `
+let lastState_${uiId} = false; 
+
+App.onTick(() => {
+    const pPos = App.getPlayerPosition(); 
+    const oPos = App.getObjectPosition('${objName}');
+    
+    if (pPos && oPos) {
+        const dist = Math.sqrt(
+            Math.pow(pPos.x - oPos.x, 2) + 
+            Math.pow(pPos.y - oPos.y, 2) + 
+            Math.pow(pPos.z - oPos.z, 2)
+        );
+        
+        const isClose = dist <= ${range};
+        
+        // Nur aktualisieren, wenn sich der Zustand geändert hat
+        if (isClose !== lastState_${uiId}) {
+            lastState_${uiId} = isClose;
+            App.setUIVisibility('${uiId}', isClose);
+            
+            // Optional: Kleiner Log zur Kontrolle
+            console.log(isClose ? "UI angezeigt" : "UI versteckt");
+        }
+    }
+});\n`;
+});
 
 
 
