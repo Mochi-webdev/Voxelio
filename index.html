@@ -386,41 +386,7 @@
                 }
             }, 5000);
         }
-        // Funktion, die erst aufgerufen wird, wenn Blockly bereit ist
-        function setupCustomToolbox() {
-            if (window.workspace) {
-                window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
-                    const xmlList = [];
-                    const blocks = workspace.getAllBlocks(false);
 
-                    // Filtert die Definitions-Blöcke
-                    const definitions = blocks.filter(b => b.type === 'custom_function_definition');
-
-                    definitions.forEach(defBlock => {
-                        const name = defBlock.getFieldValue('NAME');
-
-                        const blockXml = Blockly.utils.xml.createElement('block');
-                        blockXml.setAttribute('type', 'custom_function_call');
-
-                        const field = Blockly.utils.xml.createElement('field');
-                        field.setAttribute('name', 'NAME_LABEL');
-                        field.appendChild(Blockly.utils.xml.createTextNode(name));
-                        blockXml.appendChild(field);
-
-                        xmlList.push(blockXml);
-                    });
-
-                    return xmlList;
-                });
-                console.log("Toolbox-Callback erfolgreich registriert.");
-            } else {
-                // Falls Workspace noch nicht da, kurz warten und nochmal versuchen
-                setTimeout(setupCustomToolbox, 100);
-            }
-        }
-
-        // Startet den Versuch
-        setupCustomToolbox();
 
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
@@ -510,26 +476,40 @@
                 }
             }, 500);
         });
-        window.workspace.addChangeListener(function (event) {
+        // 1. Definiere die Funktion für den Listener separat
+        function onWorkspaceChange(event) {
             // Verhindert das Zurückspringen während man zieht
-            if (Blockly.Gesture.inProgress()) return;
+            if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
 
-            // Prüfen ob ein Block erstellt, gelöscht oder umbenannt wurde
-            if (event.type === Blockly.Events.BLOCK_CREATE ||
+            const isTriggerEvent = event.type === Blockly.Events.BLOCK_CREATE ||
                 event.type === Blockly.Events.BLOCK_DELETE ||
-                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME')) {
+                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME');
 
+            if (isTriggerEvent) {
                 const toolbox = window.workspace.getToolbox();
                 if (toolbox) {
-                    // Ein kleiner Timeout gibt Blockly Zeit, das Event intern abzuschließen
                     setTimeout(() => {
+                        // Erneuter Check, ob der User fertig ist mit Ziehen
                         if (!Blockly.Gesture.inProgress()) {
                             toolbox.refreshSelection();
                         }
                     }, 100);
                 }
             }
+        }
+
+        // 2. Erstelle den Workspace (Blockly.inject)
+        // Stelle sicher, dass dies in einer Funktion oder nach dem Laden des DOMs passiert
+        window.workspace = Blockly.inject('blocklyDiv', {
+            toolbox: document.getElementById('toolbox'),
+            // ... deine anderen Parameter
         });
+
+        // 3. JETZT den Listener hinzufügen (jetzt ist window.workspace garantiert definiert)
+        if (window.workspace) {
+            window.workspace.addChangeListener(onWorkspaceChange);
+            console.log("Workspace-Listener erfolgreich aktiviert.");
+        }
     </script>
 
 </body>
