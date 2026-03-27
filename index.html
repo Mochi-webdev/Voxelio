@@ -476,33 +476,59 @@
                 }
             }, 500);
         });
-        // 1. Zuerst die Funktion definieren
-        const myCategoryCallback = function (workspace) {
+        let toolboxUpdateTimer = null;
+
+        window.workspace.addChangeListener((event) => {
+            // 1. Sofort abbrechen, wenn eine Aktion im Gange ist
+            if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+
+            // 2. Nur auf relevante Events reagieren
+            const isRelevant = event.type === Blockly.Events.BLOCK_CREATE ||
+                event.type === Blockly.Events.BLOCK_DELETE ||
+                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME');
+
+            if (isRelevant) {
+                // 3. Bestehenden Timer löschen (Debouncing)
+                if (toolboxUpdateTimer) clearTimeout(toolboxUpdateTimer);
+
+                // 4. Update verzögern, um FocusManager-Konflikte zu vermeiden
+                toolboxUpdateTimer = setTimeout(() => {
+                    // Nochmal prüfen, ob der User inzwischen wieder etwas angefasst hat
+                    if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+
+                    const toolbox = window.workspace.getToolbox();
+                    if (toolbox) {
+                        try {
+                            // Wir refreshen nur, wenn die Kategorie "Meine Blöcke" nicht gerade offen ist
+                            // oder wir erzwingen ein silent refresh
+                            toolbox.refreshSelection();
+                        } catch (e) {
+                            console.warn("Toolbox Refresh verschoben wegen Fokus-Konflikt.");
+                        }
+                    }
+                }, 500); // 500ms warten gibt dem FocusManager genug Zeit
+            }
+        });
+        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
             const xmlList = [];
-            const blocks = workspace.getAllBlocks(false);
-            const definitions = blocks.filter(b => b.type === 'custom_function_definition');
+
+            // Wichtig: Nutze getTopBlocks, um nur die echten Definitionen zu finden
+            const topBlocks = workspace.getTopBlocks(false);
+            const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
 
             definitions.forEach(defBlock => {
-                const name = defBlock.getFieldValue('NAME');
-                const blockXml = Blockly.utils.xml.createElement('block');
-                blockXml.setAttribute('type', 'custom_function_call');
-                const field = Blockly.utils.xml.createElement('field');
-                field.setAttribute('name', 'NAME_LABEL');
-                field.appendChild(Blockly.utils.xml.createTextNode(name));
-                blockXml.appendChild(field);
+                const name = defBlock.getFieldValue('NAME') || "Unbenannt";
+
+                // Erstelle den Block als XML-String (manchmal stabiler als DOM-Elemente)
+                const blockText = `<block type="custom_function_call">
+                            <field name="NAME_LABEL">${name}</field>
+                          </block>`;
+                const blockXml = Blockly.utils.xml.textToDom(blockText);
                 xmlList.push(blockXml);
             });
+gh
             return xmlList;
-        };
-
-        // 2. Den Workspace injecten
-        window.workspace = Blockly.inject('blocklyDiv', {
-            toolbox: document.getElementById('toolbox')
         });
-
-        // 3. SOFORT danach den Callback registrieren
-        // WICHTIG: Die ID 'MY_FUNCTIONS' muss exakt so in deiner Toolbox XML stehen!
-        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', myCategoryCallback);
     </script>
 
 </body>
