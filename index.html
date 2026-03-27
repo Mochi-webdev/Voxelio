@@ -213,98 +213,91 @@
     </div>
 
     <script>
-        let activeProjectName = "";
-        let hasChanges = false;
-        let autosaveTimer = null;
+      let activeProjectName = "";
+    let hasChanges = false;
+    let autosaveTimer = null;
 
-        // Tab Switching
-        function switchTab(tab) {
-            const blocklyArea = document.getElementById('blocklyArea');
-            const textureEditor = document.getElementById('textureEditor');
-            if (tab === 'logic') {
-                blocklyArea.style.display = 'block';
-                textureEditor.style.display = 'none';
-                document.getElementById('btn-logic').classList.add('active');
-                document.getElementById('btn-texture').classList.remove('active');
-                if (window.workspace) Blockly.svgResize(window.workspace);
-            } else {
-                blocklyArea.style.display = 'none';
-                textureEditor.style.display = 'block';
-                document.getElementById('btn-logic').classList.remove('active');
-                document.getElementById('btn-texture').classList.add('active');
-            }
+    // --- 1. TOOLBOX CALLBACK FUNKTION ---
+    const myBlocksCallback = function(workspace) {
+        const xmlList = [];
+        // Nur Blöcke auf der obersten Ebene scannen
+        const topBlocks = workspace.getTopBlocks(false);
+        const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
+
+        definitions.forEach(defBlock => {
+            const name = defBlock.getFieldValue('NAME') || "Unbenannt";
+            const blockXml = Blockly.utils.xml.textToDom(
+                `<block type="custom_function_call"><field name="NAME_LABEL">${name}</field></block>`
+            );
+            xmlList.push(blockXml);
+        });
+        return xmlList;
+    };
+
+    // --- 2. INITIALISIERUNG BEIM LADEN ---
+    window.addEventListener('load', () => {
+        const params = new URLSearchParams(window.location.search);
+        activeProjectName = params.get('project');
+        const isProjectNew = params.get('new') === 'true';
+        const projectOwner = params.get('owner');
+
+        if (!activeProjectName) {
+            window.location.href = 'dashboard.html';
+            return;
         }
 
-        // --- CORE INITIALIZATION ---
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            activeProjectName = params.get('project');
-            const isProjectNew = params.get('new') === 'true';
-            const projectOwner = params.get('owner');
+        document.getElementById('currentProjectDisplay').innerText = activeProjectName;
 
-            if (!activeProjectName) {
-                window.location.href = 'dashboard.html';
-                return;
-            }
-
-            document.getElementById('currentProjectDisplay').innerText = activeProjectName;
-
-            // 1. Blockly Inject
-            window.workspace = Blockly.inject('blocklyDiv', {
-                toolbox: document.getElementById('toolbox'),
-                zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }
-            });
-
-            // 2. Register Dynamic Category (SOFORT NACH INJECT)
-            window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', (workspace) => {
-                const xmlList = [];
-                const topBlocks = workspace.getTopBlocks(false);
-                const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
-
-                definitions.forEach(defBlock => {
-                    const name = defBlock.getFieldValue('NAME') || "Unbenannt";
-                    const blockText = `<block type="custom_function_call"><field name="NAME_LABEL">${name}</field></block>`;
-                    xmlList.push(Blockly.utils.xml.textToDom(blockText));
-                });
-                return xmlList;
-            });
-
-            // 3. Change Listener für Autosave & Toolbox Refresh
-            let toolboxUpdateTimer = null;
-            window.workspace.addChangeListener((e) => {
-                if (e.isUiEvent) return;
-                hasChanges = true;
-
-                // Dynamisches Update der Toolbox (Debounced)
-                if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_DELETE || (e.type === Blockly.Events.BLOCK_CHANGE && e.name === 'NAME')) {
-                    if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
-                    
-                    if (toolboxUpdateTimer) clearTimeout(toolboxUpdateTimer);
-                    toolboxUpdateTimer = setTimeout(() => {
-                        if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
-                        const toolbox = window.workspace.getToolbox();
-                        if (toolbox) toolbox.refreshSelection();
-                    }, 500);
-                }
-            });
-
-            // 4. Data Loading
-            const checkAuth = setInterval(() => {
-                if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
-                    clearInterval(checkAuth);
-                    if (isProjectNew) {
-                        window.Editor.scripts = { "Main": {} };
-                        window.Editor.currentScript = "Main";
-                        window.App.textures = {};
-                        if (window.Editor.renderList) window.Editor.renderList();
-                    } else {
-                        // Lädt Projekt vom Owner oder von mir selbst
-                        window.UI.loadFromCloud(activeProjectName, projectOwner);
-                    }
-                    startGlobalAutosave();
-                }
-            }, 500);
+        // WORKSPACE ERSTELLEN
+        window.workspace = Blockly.inject('blocklyDiv', {
+            toolbox: document.getElementById('toolbox'),
+            zoom: { controls: true, wheel: true, startScale: 1.0 }
         });
+
+        // WICHTIG: Sofort registrieren! 
+        // Die ID 'MY_FUNCTIONS' muss EXAKT mit dem custom-Attribut im XML übereinstimmen.
+        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', myBlocksCallback);
+
+        // --- 3. CHANGE LISTENER (AUTOSAVE & REFRESH) ---
+        let toolboxUpdateTimer = null;
+        window.workspace.addChangeListener((e) => {
+            if (e.isUiEvent) return;
+            hasChanges = true;
+
+            // Toolbox Refresh Logik
+            const isRelevant = e.type === Blockly.Events.BLOCK_CREATE || 
+                               e.type === Blockly.Events.BLOCK_DELETE || 
+                               (e.type === Blockly.Events.BLOCK_CHANGE && e.name === 'NAME');
+
+            if (isRelevant) {
+                if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+
+                if (toolboxUpdateTimer) clearTimeout(toolboxUpdateTimer);
+                toolboxUpdateTimer = setTimeout(() => {
+                    if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+                    const toolbox = window.workspace.getToolbox();
+                    if (toolbox) {
+                        try { toolbox.refreshSelection(); } catch(err) {}
+                    }
+                }, 400);
+            }
+        });
+
+        // Daten laden (Interval Check für Firebase/Auth)
+        const checkAuth = setInterval(() => {
+            if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
+                clearInterval(checkAuth);
+                if (isProjectNew) {
+                    window.Editor.scripts = { "Main": {} };
+                    window.Editor.currentScript = "Main";
+                    if (window.Editor.renderList) window.Editor.renderList();
+                } else {
+                    window.UI.loadFromCloud(activeProjectName, projectOwner);
+                }
+                startGlobalAutosave();
+            }
+        }, 500);
+    });
 
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName || !window.workspace) return;
