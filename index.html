@@ -11,8 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="src/js/projectHandler.js"></script>
-
+    
     <script>
         const firebaseConfig = {
             apiKey: "FIREBASE_API_KEY_PLACEHOLDER",
@@ -25,102 +24,29 @@
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
-            console.log("Firebase synchron initialisiert.");
+            console.log("Firebase initialisiert.");
         }
     </script>
 
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
     <script src="https://unpkg.com/@blockly/field-colour"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+    <script src="src/js/projectHandler.js"></script>
     <script defer src="src/js/engine.js?v=5.28"></script>
     <script defer src="src/js/textureEditor.js?v=5"></script>
     <script defer src="src/js/blocks.js?v=6.90"></script>
     <script defer src="src/js/authHandler.js?v=5"></script>
 
     <style>
-        .user-menu {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            background-color: #1e1e1e;
-            min-width: 180px;
-            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.5);
-            z-index: 10001;
-            border: 1px solid #333;
-            border-radius: 4px;
-            margin-top: 8px;
-        }
-
-        .dropdown-content.show {
-            display: block;
-        }
-
-        .user-info {
-            padding: 12px;
-            font-size: 11px;
-            color: #888;
-            border-bottom: 1px solid #333;
-            white-space: nowrap;
-        }
-
-        .logout-btn {
-            width: 100%;
-            background: none;
-            border: none;
-            color: #ff5555;
-            padding: 12px;
-            text-align: left;
-            cursor: pointer;
-            font-size: 13px;
-            transition: background 0.2s;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 85, 85, 0.1);
-        }
-
-
-        #gameHUD {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            pointer-events: none;
-            display: none;
-        }
-
-
-        #gameHUD>* {
-            pointer-events: auto;
-            position: absolute;
-        }
-
-        .save-cloud-icon {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #4CFF00;
-            padding: 8px 15px;
-            border-radius: 20px;
-            border: 1px solid #4CFF00;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 10000;
-            display: none;
-        }
+        .user-menu { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #1e1e1e; min-width: 180px; box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.5); z-index: 10001; border: 1px solid #333; border-radius: 4px; margin-top: 8px; }
+        .dropdown-content.show { display: block; }
+        #gameHUD { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; pointer-events: none; display: none; }
+        #gameHUD>* { pointer-events: auto; position: absolute; }
+        .save-cloud-icon { position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.8); color: #4CFF00; padding: 8px 15px; border-radius: 20px; border: 1px solid #4CFF00; font-family: monospace; font-size: 12px; z-index: 10000; display: none; }
     </style>
 </head>
 
@@ -128,12 +54,9 @@
 
     <div class="top-nav">
         <div class="nav-left" style="display: flex; align-items: center; gap: 30px;">
-            <div class="brand" onclick="window.location.href='dashboard.html'"
-                style="cursor:pointer; display: flex; align-items: center; font-weight: 900; letter-spacing: 1px;">
-                <img src="assets/logo.png" alt="Logo" class="nav-icon">
-                VOXELIO
+            <div class="brand" onclick="window.location.href='dashboard.html'" style="cursor:pointer; display: flex; align-items: center; font-weight: 900; letter-spacing: 1px;">
+                <img src="assets/logo.png" alt="Logo" class="nav-icon"> VOXELIO
             </div>
-
             <div class="tab-bar">
                 <button id="btn-logic" class="tab-btn active" onclick="switchTab('logic')">Code Editor</button>
                 <button id="btn-texture" class="tab-btn" onclick="switchTab('texture')">Texture Painter</button>
@@ -141,21 +64,16 @@
         </div>
 
         <div class="actions" style="display: flex; align-items: center; gap: 10px;">
-            <span id="currentProjectDisplay"
-                style="color: var(--accent); margin: 0 10px; font-weight: bold; font-family: monospace; font-size: 12px;"></span>
+            <span id="currentProjectDisplay" style="color: var(--accent); margin: 0 10px; font-weight: bold; font-family: monospace; font-size: 12px;"></span>
             <button onclick="window.location.href='dashboard.html'" class="nav-btn">📂 Projekte</button>
-
-            <div class="user-menu">
-            </div>
-
             <button onclick="saveCurrent()" class="nav-btn">☁️ Save</button>
-
             <div class="engine-controls" style="margin-left: 10px; display: flex; gap: 5px;">
                 <button class="btn run" onclick="App.run()" style="min-width: 80px;">START</button>
                 <button class="btn stop" onclick="App.stop()">STOP</button>
             </div>
         </div>
     </div>
+
     <div id="main-container">
         <div id="blocklyArea">
             <div id="blocklyDiv" style="position: absolute;"></div>
@@ -167,35 +85,18 @@
                     <button class="tool-btn active" onclick="TextureEditor.setMode('paint', this)">✏️</button>
                     <button class="tool-btn" onclick="TextureEditor.setMode('erase', this)">🧽</button>
                     <button class="tool-btn" onclick="TextureEditor.setMode('fill', this)">🪣</button>
-                    <button class="tool-btn" onclick="TextureEditor.toggleMirror(this)" title="Symmetrie">🪞</button>
-                    <hr style="width:100%; border:0; border-top:1px solid var(--border)">
-                    <button class="tool-btn" onclick="TextureEditor.darken()">🌙</button>
-                    <button class="tool-btn" onclick="TextureEditor.brighten()">☀️</button>
+                    <button class="tool-btn" onclick="TextureEditor.toggleMirror(this)">🪞</button>
                 </div>
-
                 <div class="canvas-card">
                     <canvas id="pixelCanvas" width="512" height="512"></canvas>
                     <div id="tex-status">> Pinsel aktiv.</div>
                 </div>
-
                 <div class="painter-settings">
-                    <div class="setting-group">
-                        <label>Farbe</label>
-                        <input type="color" id="paintColor" value="#4CFF00"
-                            style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer;">
-                    </div>
-
-                    <div class="setting-group">
-                        <label>Textur Name</label>
-                        <input type="text" id="textureName" placeholder="Name..." class="nav-btn"
-                            style="text-align:left; background:#f8f9fa">
-                    </div>
-
-                    <div class="setting-group" style="margin-top:auto">
-                        <button class="btn run" onclick="TextureEditor.save()" style="width:100%">Speichern</button>
-                        <button class="btn stop" onclick="TextureEditor.clear()"
-                            style="width:100%; margin-top:5px;">Leeren</button>
-                    </div>
+                    <label>Farbe</label>
+                    <input type="color" id="paintColor" value="#4CFF00" style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer;">
+                    <label>Textur Name</label>
+                    <input type="text" id="textureName" placeholder="Name..." class="nav-btn" style="text-align:left; background:#f8f9fa">
+                    <button class="btn run" onclick="TextureEditor.save()" style="width:100%; margin-top:20px">Speichern</button>
                 </div>
             </div>
         </div>
@@ -204,13 +105,10 @@
 
         <div id="sidePanel">
             <div id="statusTag">System Bereit</div>
-            <div id="canvas3d" tabindex="0">
-            </div>
-            <div style="position: absolute; top: 10px; right: 620px; z-index: 10001; display: flex; gap: 5px;">
-                <button id="goFullscreen" onclick="App.toggleFullscreen(true)" class="nav-btn"
-                    style="background: rgba(0,0,0,0.6);">max ⛶</button>
-                <button id="exitFullscreen" onclick="App.toggleFullscreen(false)" class="nav-btn"
-                    style="background: #ff5555; display: none;">min ✕</button>
+            <div id="canvas3d" tabindex="0"></div>
+            <div style="position: absolute; top: 10px; right: 10px; z-index: 10001; display: flex; gap: 5px;">
+                <button id="goFullscreen" onclick="App.toggleFullscreen(true)" class="nav-btn" style="background: rgba(0,0,0,0.6);">max ⛶</button>
+                <button id="exitFullscreen" onclick="App.toggleFullscreen(false)" class="nav-btn" style="background: #ff5555; display: none;">min ✕</button>
             </div>
             <div class="panel-section">
                 <div class="section-header">
@@ -228,35 +126,19 @@
     </div>
 
     <div id="gameHUD"></div>
-
     <div id="save-status-cloud" class="save-cloud-icon">☁️ Autosave...</div>
 
-    <div id="nameModal" class="modal">
-        <div class="modal-content">
-            <h3>Neues Script erstellen</h3>
-            <p>Gib einen Namen für dein Script ein:</p>
-            <input type="text" id="scriptNameInput" placeholder="Name..." autofocus>
-            <div class="modal-footer">
-                <button class="btn run" onclick="Editor.createScript()">Erstellen</button>
-                <button class="btn secondary" onclick="Editor.hideModal()">Abbrechen</button>
-            </div>
-        </div>
-    </div>
     <xml id="toolbox" style="display: none">
-
         <category name="Events" colour="#FFD500">
             <block type="event_flag"></block>
             <block type="event_key"></block>
             <block type="event_tick"></block>
-
         </category>
-
         <category name="Formen" colour="#4C97FF">
             <block type="create_shape"></block>
             <block type="set_texture"></block>
             <block type="create_group"></block>
         </category>
-
         <category name="Bewegung" colour="#5CB1D6">
             <block type="set_position"></block>
             <block type="move_object"></block>
@@ -265,7 +147,6 @@
             <block type="set_rotation"></block>
             <block type="rotate_forever"></block>
         </category>
-
         <category name="Steuerung" colour="#a55b80">
             <block type="setup_fpc"></block>
             <block type="fpc_look"></block>
@@ -274,7 +155,6 @@
             <block type="set_solid"></block>
             <block type="player_jump"></block>
         </category>
-
         <category name="Logik" colour="#5C81A6">
             <block type="logic_if"></block>
             <block type="logic_if_else"></block>
@@ -286,7 +166,6 @@
             <block type="custom_function_definition"></block>
             <block type="custom_function_call"></block>
         </category>
-
         <category name="Variablen" colour="#FFAB19">
             <block type="init_var"></block>
             <block type="set_var"></block>
@@ -294,7 +173,6 @@
             <block type="get_var"></block>
             <block type="display_var"></block>
         </category>
-
         <category name="UI" colour="#A55B80">
             <block type="create_ui"></block>
             <block type="set_ui_parent"></block>
@@ -305,232 +183,151 @@
             <block type="player_interact_with_object"></block>
             <block type="set_ui_visible_manual"></block>
         </category>
-
         <category name="Text" colour="#5CB1D6">
             <block type="text"></block>
             <block type="text_join_simple"></block>
         </category>
-
         <category name="Mathe" colour="#FFD500">
             <block type="math_number"></block>
             <block type="colour_picker_custom"></block>
             <block type="get_matrix_value"></block>
             <block type="get_random_number"></block>
-
         </category>
-
         <category name="Umgebung" colour="#FFD500">
             <block type="set_light_intensity"></block>
-            <block type="set_skybox_texture">
-                <value name="TEXTURE">
-                    <block type="text">
-                        <field name="TEXT">MeineTextur1</field>
-                    </block>
-                </value>
-            </block>
-            <block type="set_floor_texture">
-                <value name="TEXTURE">
-                    <block type="text">
-                        <field name="TEXT">Gras</field>
-                    </block>
-                </value>
-            </block>
+            <block type="set_skybox_texture"></block>
+            <block type="set_floor_texture"></block>
         </category>
-        <category name="MeineBlöcke" colour="#200" custom="MY_FUNCTIONS"></category>
-
+        <category name="Meine Blöcke" colour="#200" custom="MY_FUNCTIONS"></category>
     </xml>
 
-    <script>
+    <div id="nameModal" class="modal">
+        <div class="modal-content">
+            <h3>Neues Script erstellen</h3>
+            <input type="text" id="scriptNameInput" placeholder="Name..." autofocus>
+            <div class="modal-footer">
+                <button class="btn run" onclick="Editor.createScript()">Erstellen</button>
+                <button class="btn secondary" onclick="Editor.hideModal()">Abbrechen</button>
+            </div>
+        </div>
+    </div>
 
+    <script>
         let activeProjectName = "";
         let hasChanges = false;
         let autosaveTimer = null;
 
-
-        window.addEventListener('beforeunload', (e) => {
-            if (hasChanges) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-
-
+        // Tab Switching
         function switchTab(tab) {
             const blocklyArea = document.getElementById('blocklyArea');
             const textureEditor = document.getElementById('textureEditor');
-            const btnLogic = document.getElementById('btn-logic');
-            const btnTex = document.getElementById('btn-texture');
-
             if (tab === 'logic') {
                 blocklyArea.style.display = 'block';
                 textureEditor.style.display = 'none';
-                btnLogic.classList.add('active');
-                btnTex.classList.remove('active');
+                document.getElementById('btn-logic').classList.add('active');
+                document.getElementById('btn-texture').classList.remove('active');
                 if (window.workspace) Blockly.svgResize(window.workspace);
             } else {
                 blocklyArea.style.display = 'none';
                 textureEditor.style.display = 'block';
-                btnLogic.classList.remove('active');
-                btnTex.classList.add('active');
+                document.getElementById('btn-logic').classList.remove('active');
+                document.getElementById('btn-texture').classList.add('active');
             }
         }
 
-
-        function startGlobalAutosave() {
-            if (autosaveTimer) clearInterval(autosaveTimer);
-
-            autosaveTimer = setInterval(async () => {
-                if (hasChanges && activeProjectName) {
-                    console.log("☁️ Autosave wird ausgeführt...");
-                    await saveCurrent(true);
-                }
-            }, 5000);
-        }
-
-
-        async function saveCurrent(isSilent = false) {
-            if (!activeProjectName) return;
-
-
-            if (window.Editor && window.workspace) {
-                Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
-            }
-
-            try {
-                if (isSilent) {
-                    const cloudIcon = document.getElementById('save-status-cloud');
-                    if (cloudIcon) {
-                        cloudIcon.style.display = 'block';
-
-                    }
-                }
-
-                if (window.AuthHandler) {
-
-                    await AuthHandler.saveToCloud(activeProjectName, isSilent);
-                    hasChanges = false;
-                    console.log("✅ Speichern erfolgreich.");
-                }
-            } catch (err) {
-                console.error("❌ Speicherfehler:", err);
-                if (!isSilent) alert("Fehler beim Speichern!");
-            } finally {
-                if (isSilent) {
-                    setTimeout(() => {
-                        document.getElementById('save-status-cloud').style.display = 'none';
-                    }, 1000);
-                }
-            }
-        }
-
-
+        // --- CORE INITIALIZATION ---
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
             activeProjectName = params.get('project');
             const isProjectNew = params.get('new') === 'true';
-
-            // NEU: Den Besitzer aus der URL auslesen (für geteilte Projekte)
             const projectOwner = params.get('owner');
 
             if (!activeProjectName) {
-                console.warn("Kein Projekt ausgewählt. Umleitung zum Dashboard...");
                 window.location.href = 'dashboard.html';
                 return;
             }
 
             document.getElementById('currentProjectDisplay').innerText = activeProjectName;
 
+            // 1. Blockly Inject
+            window.workspace = Blockly.inject('blocklyDiv', {
+                toolbox: document.getElementById('toolbox'),
+                zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 }
+            });
+
+            // 2. Register Dynamic Category (SOFORT NACH INJECT)
+            window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', (workspace) => {
+                const xmlList = [];
+                const topBlocks = workspace.getTopBlocks(false);
+                const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
+
+                definitions.forEach(defBlock => {
+                    const name = defBlock.getFieldValue('NAME') || "Unbenannt";
+                    const blockText = `<block type="custom_function_call"><field name="NAME_LABEL">${name}</field></block>`;
+                    xmlList.push(Blockly.utils.xml.textToDom(blockText));
+                });
+                return xmlList;
+            });
+
+            // 3. Change Listener für Autosave & Toolbox Refresh
+            let toolboxUpdateTimer = null;
+            window.workspace.addChangeListener((e) => {
+                if (e.isUiEvent) return;
+                hasChanges = true;
+
+                // Dynamisches Update der Toolbox (Debounced)
+                if (e.type === Blockly.Events.BLOCK_CREATE || e.type === Blockly.Events.BLOCK_DELETE || (e.type === Blockly.Events.BLOCK_CHANGE && e.name === 'NAME')) {
+                    if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+                    
+                    if (toolboxUpdateTimer) clearTimeout(toolboxUpdateTimer);
+                    toolboxUpdateTimer = setTimeout(() => {
+                        if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+                        const toolbox = window.workspace.getToolbox();
+                        if (toolbox) toolbox.refreshSelection();
+                    }, 500);
+                }
+            });
+
+            // 4. Data Loading
             const checkAuth = setInterval(() => {
-                // Wir warten, bis alle Handler bereit sind
                 if (window.AuthHandler && AuthHandler.user && window.UI && window.Editor) {
                     clearInterval(checkAuth);
-
                     if (isProjectNew) {
-                        console.log("Erstelle neues Projekt...");
-                        window.activeProjectName = activeProjectName;
                         window.Editor.scripts = { "Main": {} };
                         window.Editor.currentScript = "Main";
                         window.App.textures = {};
                         if (window.Editor.renderList) window.Editor.renderList();
-
-                        setTimeout(async () => {
-                            if (window.AuthHandler && AuthHandler.user) {
-                                await window.AuthHandler.saveToCloud(window.activeProjectName, false);
-                            }
-                        }, 1500);
                     } else {
-                        // NEU: UI.loadFromCloud wird jetzt mit dem owner aufgerufen, falls vorhanden
-                        // Wenn kein owner da ist, nutzt die Funktion automatisch die eigene UID
+                        // Lädt Projekt vom Owner oder von mir selbst
                         window.UI.loadFromCloud(activeProjectName, projectOwner);
                     }
-
                     startGlobalAutosave();
-
-                    // Blockly Change Listener (bestehend lassen...)
-                    if (window.workspace) {
-                        window.workspace.addChangeListener((e) => {
-                            if (e.isUiEvent || e.type === Blockly.Events.FINISHED_LOADING) return;
-                            hasChanges = true;
-                        });
-                    }
                 }
             }, 500);
         });
-        let toolboxUpdateTimer = null;
 
-        window.workspace.addChangeListener((event) => {
-            // 1. Sofort abbrechen, wenn eine Aktion im Gange ist
-            if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
-
-            // 2. Nur auf relevante Events reagieren
-            const isRelevant = event.type === Blockly.Events.BLOCK_CREATE ||
-                event.type === Blockly.Events.BLOCK_DELETE ||
-                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME');
-
-            if (isRelevant) {
-                // 3. Bestehenden Timer löschen (Debouncing)
-                if (toolboxUpdateTimer) clearTimeout(toolboxUpdateTimer);
-
-                // 4. Update verzögern, um FocusManager-Konflikte zu vermeiden
-                toolboxUpdateTimer = setTimeout(() => {
-                    // Nochmal prüfen, ob der User inzwischen wieder etwas angefasst hat
-                    if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
-
-                    const toolbox = window.workspace.getToolbox();
-                    if (toolbox) {
-                        try {
-                            // Wir refreshen nur, wenn die Kategorie "Meine Blöcke" nicht gerade offen ist
-                            // oder wir erzwingen ein silent refresh
-                            toolbox.refreshSelection();
-                        } catch (e) {
-                            console.warn("Toolbox Refresh verschoben wegen Fokus-Konflikt.");
-                        }
-                    }
-                }, 500); // 500ms warten gibt dem FocusManager genug Zeit
+        async function saveCurrent(isSilent = false) {
+            if (!activeProjectName || !window.workspace) return;
+            Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
+            
+            if (isSilent) document.getElementById('save-status-cloud').style.display = 'block';
+            
+            try {
+                await AuthHandler.saveToCloud(activeProjectName, isSilent);
+                hasChanges = false;
+            } catch (err) {
+                console.error("Save failed:", err);
+            } finally {
+                if (isSilent) setTimeout(() => document.getElementById('save-status-cloud').style.display = 'none', 1000);
             }
-        });
-        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
-            const xmlList = [];
+        }
 
-            // Wichtig: Nutze getTopBlocks, um nur die echten Definitionen zu finden
-            const topBlocks = workspace.getTopBlocks(false);
-            const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
-
-            definitions.forEach(defBlock => {
-                const name = defBlock.getFieldValue('NAME') || "Unbenannt";
-
-                // Erstelle den Block als XML-String (manchmal stabiler als DOM-Elemente)
-                const blockText = `<block type="custom_function_call">
-                            <field name="NAME_LABEL">${name}</field>
-                          </block>`;
-                const blockXml = Blockly.utils.xml.textToDom(blockText);
-                xmlList.push(blockXml);
-            });
-gh
-            return xmlList;
-        });
+        function startGlobalAutosave() {
+            if (autosaveTimer) clearInterval(autosaveTimer);
+            autosaveTimer = setInterval(async () => {
+                if (hasChanges && activeProjectName) await saveCurrent(true);
+            }, 5000);
+        }
     </script>
-
 </body>
-
 </html>
