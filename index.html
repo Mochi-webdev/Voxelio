@@ -284,6 +284,7 @@
             <block type="ui_button_pressed"></block>
             <block type="clone_object"></block>
             <block type="custom_function_definition"></block>
+            <block type="custom_function_call"></block>
         </category>
 
         <category name="Variablen" colour="#FFAB19">
@@ -385,30 +386,51 @@
                 }
             }, 5000);
         }
-        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
-            const xmlList = [];
+        // Funktion, die erst aufgerufen wird, wenn Blockly bereit ist
+        function setupCustomToolbox() {
+            if (window.workspace) {
+                window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
+                    const xmlList = [];
+                    const blocks = workspace.getAllBlocks(false);
 
-            // Finde alle Definition-Blöcke im Workspace
-            const blocks = workspace.getAllBlocks(false);
-            const definitions = blocks.filter(b => b.type === 'custom_function_definition');
+                    // Filtert die Definitions-Blöcke
+                    const definitions = blocks.filter(b => b.type === 'custom_function_definition');
 
-            definitions.forEach(defBlock => {
-                const name = defBlock.getFieldValue('NAME');
+                    definitions.forEach(defBlock => {
+                        const name = defBlock.getFieldValue('NAME');
 
-                // Erstelle ein XML-Element für den Aufruf-Block
-                const blockXml = Blockly.utils.xml.createElement('block');
-                blockXml.setAttribute('type', 'custom_function_call');
+                        const blockXml = Blockly.utils.xml.createElement('block');
+                        blockXml.setAttribute('type', 'custom_function_call');
 
-                // Setze den Namen im Feld
-                const field = Blockly.utils.xml.createElement('field');
-                field.setAttribute('name', 'NAME_LABEL');
-                field.appendChild(Blockly.utils.xml.createTextNode(name));
-                blockXml.appendChild(field);
+                        const field = Blockly.utils.xml.createElement('field');
+                        field.setAttribute('name', 'NAME_LABEL');
+                        field.appendChild(Blockly.utils.xml.createTextNode(name));
+                        blockXml.appendChild(field);
 
-                xmlList.push(blockXml);
-            });
+                        xmlList.push(blockXml);
+                    });
 
-            return xmlList;
+                    return xmlList;
+                });
+                console.log("Toolbox-Callback erfolgreich registriert.");
+            } else {
+                // Falls Workspace noch nicht da, kurz warten und nochmal versuchen
+                setTimeout(setupCustomToolbox, 100);
+            }
+        }
+
+        // Startet den Versuch
+        setupCustomToolbox();
+        window.workspace.addChangeListener((event) => {
+            // Wenn ein Feld geändert wurde (z.B. der Name deiner Funktion)
+            if (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME') {
+                // Toolbox zwingen, sich neu zu zeichnen
+                const toolbox = window.workspace.getToolbox();
+                if (toolbox) {
+                    // Dies triggert den CategoryCallback neu
+                    toolbox.refreshSelection();
+                }
+            }
         });
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
