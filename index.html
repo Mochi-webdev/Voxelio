@@ -421,17 +421,7 @@
 
         // Startet den Versuch
         setupCustomToolbox();
-        window.workspace.addChangeListener((event) => {
-            // Wenn ein Feld geändert wurde (z.B. der Name deiner Funktion)
-            if (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME') {
-                // Toolbox zwingen, sich neu zu zeichnen
-                const toolbox = window.workspace.getToolbox();
-                if (toolbox) {
-                    // Dies triggert den CategoryCallback neu
-                    toolbox.refreshSelection();
-                }
-            }
-        });
+   
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
 
