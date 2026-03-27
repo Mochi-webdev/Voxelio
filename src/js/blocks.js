@@ -287,15 +287,20 @@ Blockly.Blocks['set_ui_visible_manual'] = {
 };
 Blockly.Blocks['run_as_function'] = {
   init: function() {
-    this.appendDummyField()
+   
+    this.appendDummyInput()
         .appendField("führe als Funktion aus:")
         .appendField(new Blockly.FieldTextInput("meineFunktion"), "NAME");
+
+   
     this.appendStatementInput("STACK")
         .setCheck(null);
+
+    // Standards für die Verbindung
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour(290);
-    this.setTooltip("Packt alle inneren Blöcke in eine Funktion und führt sie aus.");
+    this.setTooltip("Führt den Inhalt als benannte Funktion aus.");
   }
 };
 
