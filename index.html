@@ -421,7 +421,7 @@
 
         // Startet den Versuch
         setupCustomToolbox();
-   
+
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
 
@@ -509,6 +509,26 @@
                     }
                 }
             }, 500);
+        });
+        window.workspace.addChangeListener(function (event) {
+            // Verhindert das Zurückspringen während man zieht
+            if (Blockly.Gesture.inProgress()) return;
+
+            // Prüfen ob ein Block erstellt, gelöscht oder umbenannt wurde
+            if (event.type === Blockly.Events.BLOCK_CREATE ||
+                event.type === Blockly.Events.BLOCK_DELETE ||
+                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME')) {
+
+                const toolbox = window.workspace.getToolbox();
+                if (toolbox) {
+                    // Ein kleiner Timeout gibt Blockly Zeit, das Event intern abzuschließen
+                    setTimeout(() => {
+                        if (!Blockly.Gesture.inProgress()) {
+                            toolbox.refreshSelection();
+                        }
+                    }, 100);
+                }
+            }
         });
     </script>
 
