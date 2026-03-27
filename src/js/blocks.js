@@ -285,24 +285,39 @@ Blockly.Blocks['set_ui_visible_manual'] = {
     this.setTooltip("Schaltet die Sichtbarkeit eines UI-Elements manuell um.");
   }
 };
-Blockly.Blocks['run_as_function'] = {
+Blockly.Blocks['custom_function_definition'] = {
   init: function() {
-   
     this.appendDummyInput()
-        .appendField("führe als Funktion aus:")
-        .appendField(new Blockly.FieldTextInput("meineFunktion"), "NAME");
-
-   
-    this.appendStatementInput("STACK")
-        .setCheck(null);
-
-    // Standards für die Verbindung
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
+        .appendField("Definiere neuen Block:")
+        .appendField(new Blockly.FieldTextInput("mein_neuer_block", (name) => {
+            // Wenn der Name geändert wird, Toolbox aktualisieren
+            setTimeout(() => { if(window.workspace) window.workspace.getToolbox().refreshSelection(); }, 100);
+            return name;
+        }), "NAME");
+    this.appendStatementInput("STACK").setCheck(null);
     this.setColour(290);
-    this.setTooltip("Führt den Inhalt als benannte Funktion aus.");
+    this.setTooltip("Definiert die Logik für einen neuen Block in 'Meine Blöcke'.");
   }
 };
+Blockly.Blocks['custom_function_call'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("", "NAME_LABEL");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(200);
+  },
+  // Hilfsfunktion um den Namen zu setzen
+  setFunctionName: function(name) {
+    this.setFieldValue(name, "NAME_LABEL");
+    this.functionName = name;
+  }
+};
+
+
+
+
+
 
 // --- GENERATORS CONFIG ---
 // Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
@@ -487,22 +502,41 @@ GC.forBlock['wait_seconds'] = function(block, generator) {
   // WICHTIG: Das await sorgt dafür, dass die Engine pausiert
   return `await new Promise(resolve => setTimeout(resolve, ${seconds} * 1000));\n`;
 };
-GC.forBlock['run_as_function'] = function(block, generator) {
+GC.forBlock['custom_function_definition'] = function(block, generator) {
   const funcName = block.getFieldValue('NAME').replace(/[^a-zA-Z0-9]/g, '_');
   const branch = generator.statementToCode(block, 'STACK');
-  
-  // Wir erstellen eine benannte async-Funktion im globalen Scope, 
-  // damit sie nicht jedes Mal neu definiert wird, falls sie im onTick liegt.
-  const code = `
-    if (!window.${funcName}) {
-        window.${funcName} = async function() {
-            ${branch}
-        };
-    }
-    await window.${funcName}();\n`;
-    
-  return code;
+  // Wir definieren die Funktion global, damit sie von überall aufrufbar ist
+  return `window.func_${funcName} = async function() { 
+    ${branch} 
+  };\n`;
 };
+// Generator für den Aufruf-Block
+GC.forBlock['custom_function_call'] = function(block, generator) {
+  const funcName = block.getFieldValue('NAME_LABEL').replace(/[^a-zA-Z0-9]/g, '_');
+  return `if(window.func_${funcName}) await window.func_${funcName}();\n`;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

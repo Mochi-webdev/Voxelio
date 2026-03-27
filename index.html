@@ -38,7 +38,7 @@
 
     <script defer src="src/js/engine.js?v=5.28"></script>
     <script defer src="src/js/textureEditor.js?v=5"></script>
-    <script defer src="src/js/blocks.js?v=6.89"></script>
+    <script defer src="src/js/blocks.js?v=6.90"></script>
     <script defer src="src/js/authHandler.js?v=5"></script>
 
     <style>
@@ -315,7 +315,7 @@
             <block type="colour_picker_custom"></block>
             <block type="get_matrix_value"></block>
             <block type="get_random_number"></block>
-            
+
         </category>
 
         <category name="Umgebung" colour="#FFD500">
@@ -335,6 +335,7 @@
                 </value>
             </block>
         </category>
+        <category name="MeineBlöcke" colour="#200" custom="MY_FUNCTIONS"></category>
 
     </xml>
 
@@ -384,6 +385,31 @@
                 }
             }, 5000);
         }
+        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', function (workspace) {
+            const xmlList = [];
+
+            // Finde alle Definition-Blöcke im Workspace
+            const blocks = workspace.getAllBlocks(false);
+            const definitions = blocks.filter(b => b.type === 'custom_function_definition');
+
+            definitions.forEach(defBlock => {
+                const name = defBlock.getFieldValue('NAME');
+
+                // Erstelle ein XML-Element für den Aufruf-Block
+                const blockXml = Blockly.utils.xml.createElement('block');
+                blockXml.setAttribute('type', 'custom_function_call');
+
+                // Setze den Namen im Feld
+                const field = Blockly.utils.xml.createElement('field');
+                field.setAttribute('name', 'NAME_LABEL');
+                field.appendChild(Blockly.utils.xml.createTextNode(name));
+                blockXml.appendChild(field);
+
+                xmlList.push(blockXml);
+            });
+
+            return xmlList;
+        });
         async function saveCurrent(isSilent = false) {
             if (!activeProjectName) return;
 
