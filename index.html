@@ -476,33 +476,33 @@
                 }
             }, 500);
         });
-        // 1. Definiere die Funktion für den Listener separat
-        function onWorkspaceChange(event) {
-            // Verhindert das Zurückspringen während man zieht
-            if (Blockly.Gesture && Blockly.Gesture.inProgress()) return;
+        // 1. Zuerst die Funktion definieren
+        const myCategoryCallback = function (workspace) {
+            const xmlList = [];
+            const blocks = workspace.getAllBlocks(false);
+            const definitions = blocks.filter(b => b.type === 'custom_function_definition');
 
-            const isTriggerEvent = event.type === Blockly.Events.BLOCK_CREATE ||
-                event.type === Blockly.Events.BLOCK_DELETE ||
-                (event.type === Blockly.Events.BLOCK_CHANGE && event.name === 'NAME');
+            definitions.forEach(defBlock => {
+                const name = defBlock.getFieldValue('NAME');
+                const blockXml = Blockly.utils.xml.createElement('block');
+                blockXml.setAttribute('type', 'custom_function_call');
+                const field = Blockly.utils.xml.createElement('field');
+                field.setAttribute('name', 'NAME_LABEL');
+                field.appendChild(Blockly.utils.xml.createTextNode(name));
+                blockXml.appendChild(field);
+                xmlList.push(blockXml);
+            });
+            return xmlList;
+        };
 
-            if (isTriggerEvent) {
-                const toolbox = window.workspace.getToolbox();
-                if (toolbox) {
-                    setTimeout(() => {
-                        // Erneuter Check, ob der User fertig ist mit Ziehen
-                        if (!Blockly.Gesture.inProgress()) {
-                            toolbox.refreshSelection();
-                        }
-                    }, 100);
-                }
-            }
-        }
+        // 2. Den Workspace injecten
+        window.workspace = Blockly.inject('blocklyDiv', {
+            toolbox: document.getElementById('toolbox')
+        });
 
-        // 3. JETZT den Listener hinzufügen (jetzt ist window.workspace garantiert definiert)
-        if (window.workspace) {
-            window.workspace.addChangeListener(onWorkspaceChange);
-            console.log("Workspace-Listener erfolgreich aktiviert.");
-        }
+        // 3. SOFORT danach den Callback registrieren
+        // WICHTIG: Die ID 'MY_FUNCTIONS' muss exakt so in deiner Toolbox XML stehen!
+        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', myCategoryCallback);
     </script>
 
 </body>
