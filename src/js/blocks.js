@@ -285,7 +285,19 @@ Blockly.Blocks['set_ui_visible_manual'] = {
     this.setTooltip("Schaltet die Sichtbarkeit eines UI-Elements manuell um.");
   }
 };
-
+Blockly.Blocks['run_as_function'] = {
+  init: function() {
+    this.appendDummyField()
+        .appendField("führe als Funktion aus:")
+        .appendField(new Blockly.FieldTextInput("meineFunktion"), "NAME");
+    this.appendStatementInput("STACK")
+        .setCheck(null);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(290);
+    this.setTooltip("Packt alle inneren Blöcke in eine Funktion und führt sie aus.");
+  }
+};
 
 // --- GENERATORS CONFIG ---
 // Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
@@ -431,6 +443,7 @@ App.onTick(() => {
     }
 });\n`;
 };
+
 GC.forBlock['player_interact_with_object'] = wrap((b, g) => {
     const key = b.getFieldValue('KEY');
     const objName = b.getFieldValue('OBJ_NAME');
@@ -469,7 +482,22 @@ GC.forBlock['wait_seconds'] = function(block, generator) {
   // WICHTIG: Das await sorgt dafür, dass die Engine pausiert
   return `await new Promise(resolve => setTimeout(resolve, ${seconds} * 1000));\n`;
 };
-
+GC.forBlock['run_as_function'] = function(block, generator) {
+  const funcName = block.getFieldValue('NAME').replace(/[^a-zA-Z0-9]/g, '_');
+  const branch = generator.statementToCode(block, 'STACK');
+  
+  // Wir erstellen eine benannte async-Funktion im globalen Scope, 
+  // damit sie nicht jedes Mal neu definiert wird, falls sie im onTick liegt.
+  const code = `
+    if (!window.${funcName}) {
+        window.${funcName} = async function() {
+            ${branch}
+        };
+    }
+    await window.${funcName}();\n`;
+    
+  return code;
+};
 
 
 
