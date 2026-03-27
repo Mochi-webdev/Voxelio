@@ -498,13 +498,6 @@
             }
         }
 
-        // 2. Erstelle den Workspace (Blockly.inject)
-        // Stelle sicher, dass dies in einer Funktion oder nach dem Laden des DOMs passiert
-        window.workspace = Blockly.inject('blocklyDiv', {
-            toolbox: document.getElementById('toolbox'),
-            // ... deine anderen Parameter
-        });
-
         // 3. JETZT den Listener hinzufügen (jetzt ist window.workspace garantiert definiert)
         if (window.workspace) {
             window.workspace.addChangeListener(onWorkspaceChange);
