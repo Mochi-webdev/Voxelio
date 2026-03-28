@@ -545,19 +545,19 @@ window.App = {
     },
     toggleFullscreen() {
     if (!document.fullscreenElement) {
-        // In den Fullscreen-Modus wechseln
-        const element = document.documentElement; // Das ganze Fenster
+        
+        const element = document.documentElement; 
         if (element.requestFullscreen) {
             element.requestFullscreen();
-        } else if (element.mozRequestFullScreen) { /* Firefox */
+        } else if (element.mozRequestFullScreen) { 
             element.mozRequestFullScreen();
-        } else if (element.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+        } else if (element.webkitRequestFullscreen) { 
             element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) { /* IE/Edge */
+        } else if (element.msRequestFullscreen) {
             element.msRequestFullscreen();
         }
     } else {
-        // Fullscreen verlassen
+       
         if (document.exitFullscreen) {
             document.exitFullscreen();
         } else if (document.mozCancelFullScreen) {
