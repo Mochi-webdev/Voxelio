@@ -486,16 +486,15 @@ body {
     background: #fff5f5;
 }
 /* --- Cinema Mode (Bigger Canvas) --- */
-
+/* Der "Cinema Mode" für das 3D Fenster */
 #sidePanel.is-maximized {
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    z-index: 9999;
+    z-index: 20000 !important; /* Über dem Blockly Editor */
     background: #000;
-    border: none;
 }
 
 #sidePanel.is-maximized #canvas3d {
@@ -503,15 +502,9 @@ body {
     width: 100vw !important;
 }
 
-/* Verstecke alles andere im SidePanel, wenn maximiert */
+/* Verstecke die UI-Listen im Vollbild, damit nur das Spiel zu sehen ist */
 #sidePanel.is-maximized .panel-section, 
-#sidePanel.is-maximized #statusTag,
-#sidePanel.is-maximized #log,
-#sidePanel.is-maximized .section-header {
+#sidePanel.is-maximized #statusTag, 
+#sidePanel.is-maximized #log {
     display: none !important;
-}
-
-/* Stelle sicher, dass der Fullscreen-Button im Fullscreen oben rechts bleibt */
-.toggleFullscreen-btn {
-    z-index: 10001; /* Immer über dem Canvas */
 }

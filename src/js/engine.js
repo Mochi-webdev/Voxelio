@@ -548,18 +548,30 @@ window.App = {
 
         console.log("Cleanup fertig. Alle Klone sind weg.");
     },
-    toggleFullscreen() {
+    toggleFullscreen(isMaximized) {
         const sidePanel = document.getElementById('sidePanel');
+        const goBtn = document.getElementById('goFullscreen');
+        const exitBtn = document.getElementById('exitFullscreen');
+
         if (!sidePanel) return;
 
-        // Klasse umschalten
-        sidePanel.classList.toggle('is-maximized');
+        if (isMaximized) {
+            // Maximieren
+            sidePanel.classList.add('is-maximized');
+            if (goBtn) goBtn.style.display = 'none';
+            if (exitBtn) exitBtn.style.display = 'block';
+        } else {
+            // Minimieren
+            sidePanel.classList.remove('is-maximized');
+            if (goBtn) goBtn.style.display = 'block';
+            if (exitBtn) exitBtn.style.display = 'none';
+        }
 
-        // WICHTIG: Die Engine muss die neue Größe berechnen
-        // Wir nutzen setTimeout, damit das CSS erst greifen kann
+        // WICHTIG: Renderer an neue Größe anpassen
+        // Ein kurzes Timeout hilft, damit das CSS erst wirken kann
         setTimeout(() => {
             this.onResize();
-        }, 10);
+        }, 50);
     }
 };
 
