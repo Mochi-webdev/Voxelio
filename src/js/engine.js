@@ -480,42 +480,48 @@ window.App = {
 
    stop() {
     this.isRunning = false;
-    
-    // 1. UI aufräumen
+
+    // 1. UI & HUD aufräumen
     Object.values(this.uiElements).forEach(el => el.remove());
     this.uiElements = {};
     const hud = document.getElementById('gameHUD');
     if (hud) hud.innerHTML = "";
     this.variableDisplays = {};
 
-    // 2. Kamera retten, BEVOR die Eltern gelöscht werden
+    // 2. Kamera retten (falls sie an den FPC-Spieler angehängt war)
     if (this.camera) {
-        // Falls die Kamera Kind des Spielers war, zurück in die Szene
         this.scene.attach(this.camera); 
         this.camera.position.set(8, 8, 8);
         this.camera.lookAt(0, 0, 0);
     }
 
-    // 3. Objekte sicher entfernen (auch verschachtelte)
-    Object.keys(this.objects).forEach(name => {
-        const obj = this.objects[name];
-        if (obj) {
-            // WICHTIG: removeFromParent() funktioniert immer, egal wo das Objekt steckt
-            obj.removeFromParent(); 
-            
-            // Optional: Speicher freigeben (VRAM)
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) {
-                if (Array.isArray(obj.material)) {
-                    obj.material.forEach(m => m.dispose());
-                } else {
-                    obj.material.dispose();
-                }
+    // 3. SZENE REINIGEN (Der "Nuclear" Weg)
+    // Wir sammeln alle Objekte, die gelöscht werden sollen
+    const objectsToRemove = [];
+    this.scene.traverse((child) => {
+        // Wir löschen alles, was ein Mesh oder eine Gruppe ist...
+        if (child.isMesh || child.isGroup) {
+            // ...AUẞER den Boden, die Kamera und die Lichter
+            if (child.name !== "mainFloor" && child !== this.floor && child !== this.camera && !child.isLight) {
+                objectsToRemove.push(child);
             }
         }
     });
 
-    // 4. Listen zurücksetzen
+    // Jetzt löschen wir sie wirklich und geben den Speicher (VRAM) frei
+    objectsToRemove.forEach(obj => {
+        obj.removeFromParent(); // Entfernt es aus der Szene/Gruppe
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+            materials.forEach(m => {
+                if (m.map) m.map.dispose(); // Textur-Speicher leeren
+                m.dispose();
+            });
+        }
+    });
+
+    // 4. Referenzen und Listen zurücksetzen
     this.objects = {};
     this.solids = [];
     this.keyListeners = {};
@@ -523,19 +529,15 @@ window.App = {
     this.variables = {};
     this.fpcPlayer = null;
 
-    // 5. OrbitControls wieder aktivieren
+    // 5. Steuerung & Sperre zurücksetzen
     if (this.controls) {
         this.controls.enabled = true;
         this.controls.update();
     }
-
-    // 6. Pointer Lock lösen
-    if (document.pointerLockElement) {
-        document.exitPointerLock();
-    }
+    if (document.pointerLockElement) document.exitPointerLock();
 
     this.updateExplorer();
-    console.log("🛑 Szene vollständig bereinigt.");
+    console.log("🛑 Szene & Speicher vollständig bereinigt.");
 }
 };
 
