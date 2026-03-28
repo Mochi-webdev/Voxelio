@@ -182,9 +182,16 @@ window.App = {
     cloneObject(originalName, newId) {
         const original = this.objects[originalName];
         if (!original) return;
+
+        // Falls die ID schon existiert, hängen wir einen Zeitstempel oder Zufall an
+        let finalId = newId;
+        if (this.objects[newId]) {
+            finalId = newId + "_" + Math.floor(Math.random() * 1000);
+        }
+
         const clone = original.clone();
-        clone.name = newId;
-        this.objects[newId] = clone;
+        clone.name = finalId;
+        this.objects[finalId] = clone;
         this.scene.add(clone);
         this.updateExplorer();
     },
@@ -488,40 +495,43 @@ window.App = {
     if (hud) hud.innerHTML = "";
     this.variableDisplays = {};
 
-    // 2. Kamera retten (falls sie an den FPC-Spieler angehängt war)
+    // 2. Kamera retten
     if (this.camera) {
-        this.scene.attach(this.camera); 
+        if (this.camera.parent) this.camera.parent.remove(this.camera);
+        this.scene.add(this.camera);
         this.camera.position.set(8, 8, 8);
         this.camera.lookAt(0, 0, 0);
     }
 
-    // 3. SZENE REINIGEN (Der "Nuclear" Weg)
-    // Wir sammeln alle Objekte, die gelöscht werden sollen
-    const objectsToRemove = [];
+    // 3. SZENE REINIGEN (Sicherer Weg)
+    const toRemove = [];
     this.scene.traverse((child) => {
-        // Wir löschen alles, was ein Mesh oder eine Gruppe ist...
         if (child.isMesh || child.isGroup) {
-            // ...AUẞER den Boden, die Kamera und die Lichter
+            // Boden, Kamera und Lichter ignorieren
             if (child.name !== "mainFloor" && child !== this.floor && child !== this.camera && !child.isLight) {
-                objectsToRemove.push(child);
+                toRemove.push(child);
             }
         }
     });
 
-    // Jetzt löschen wir sie wirklich und geben den Speicher (VRAM) frei
-    objectsToRemove.forEach(obj => {
-        obj.removeFromParent(); // Entfernt es aus der Szene/Gruppe
+    toRemove.forEach(obj => {
+        // Geometrie und Material aus dem VRAM löschen
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
             const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
             materials.forEach(m => {
-                if (m.map) m.map.dispose(); // Textur-Speicher leeren
+                if (m.map) m.map.dispose();
                 m.dispose();
             });
         }
+
+        // Objekt vom Elternteil entfernen (funktioniert in allen Versionen)
+        if (obj.parent) {
+            obj.parent.remove(obj);
+        }
     });
 
-    // 4. Referenzen und Listen zurücksetzen
+    // 4. Referenzen zurücksetzen
     this.objects = {};
     this.solids = [];
     this.keyListeners = {};
@@ -529,7 +539,7 @@ window.App = {
     this.variables = {};
     this.fpcPlayer = null;
 
-    // 5. Steuerung & Sperre zurücksetzen
+    // 5. Steuerung wiederherstellen
     if (this.controls) {
         this.controls.enabled = true;
         this.controls.update();
@@ -537,7 +547,6 @@ window.App = {
     if (document.pointerLockElement) document.exitPointerLock();
 
     this.updateExplorer();
-    console.log("🛑 Szene & Speicher vollständig bereinigt.");
 }
 };
 
