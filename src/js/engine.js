@@ -509,6 +509,7 @@ window.App = {
                 }
             }
         });
+        
 
      
         toRemove.forEach(obj => {
@@ -541,7 +542,33 @@ window.App = {
         }
 
         console.log("Cleanup fertig. Alle Klone sind weg.");
+    },
+    toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        // In den Fullscreen-Modus wechseln
+        const element = document.documentElement; // Das ganze Fenster
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.mozRequestFullScreen) { /* Firefox */
+            element.mozRequestFullScreen();
+        } else if (element.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+            element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) { /* IE/Edge */
+            element.msRequestFullscreen();
+        }
+    } else {
+        // Fullscreen verlassen
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
     }
+}
 };
 
 window.UI = {
