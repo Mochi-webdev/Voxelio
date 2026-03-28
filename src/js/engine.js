@@ -1,6 +1,3 @@
-window.App = window.App || {};
-App.uiElements = {};
-window.App.textures = window.App.textures || {};
 window.Editor = {
     scripts: { "main": {} },
     currentScript: "main",
@@ -21,22 +18,14 @@ window.Editor = {
         });
     },
 
-
     switchScript(name) {
         if (!window.workspace) return;
-
-
-        const state = Blockly.serialization.workspaces.save(window.workspace);
-        this.scripts[this.currentScript] = state;
-
+        this.updateCurrentScriptBuffer();
         this.currentScript = name;
         const data = this.scripts[name] || {};
-
         window.workspace.clear();
         Blockly.serialization.workspaces.load(data, window.workspace);
-
         this.renderList();
-        console.log(`Tab gewechselt zu: ${name}`);
     },
 
     createScript() {
@@ -44,24 +33,30 @@ window.Editor = {
         const name = input.value.trim().replace(/[^a-zA-Z0-9]/g, '_');
         if (name && !this.scripts[name]) {
             this.scripts[name] = {};
-            this.hideModal();
+            if (this.hideModal) this.hideModal();
             this.switchScript(name);
-
             const pName = new URLSearchParams(window.location.search).get('project');
-            if (pName) AuthHandler.saveToCloud(pName, true);
+            if (pName && window.AuthHandler) AuthHandler.saveToCloud(pName, true);
         }
         input.value = "";
     },
 
+    deleteScript(name) {
+        if (name === 'main') return;
+        delete this.scripts[name];
+        if (this.currentScript === name) this.switchScript('main');
+        else this.renderList();
+    },
+
     showModal() { document.getElementById('nameModal').style.display = 'flex'; },
     hideModal() { document.getElementById('nameModal').style.display = 'none'; },
+
     getAllCode() {
         this.updateCurrentScriptBuffer();
         let fullCode = "";
         const generator = window.javascriptGenerator || Blockly.JavaScript;
-
         Object.values(this.scripts).forEach(saveData => {
-            if (saveData) {
+            if (saveData && Object.keys(saveData).length > 0) {
                 const tempWorkspace = new Blockly.Workspace();
                 Blockly.serialization.workspaces.load(saveData, tempWorkspace);
                 fullCode += generator.workspaceToCode(tempWorkspace) + "\n";
@@ -77,37 +72,44 @@ window.Editor = {
         }
     }
 };
+
 window.App = {
     scene: null,
     camera: null,
     renderer: null,
     controls: null,
     objects: {},
+    uiElements: {},
+    textures: {},
+    variables: {},
     keyListeners: {},
     tickListeners: [],
+    solids: [],
+    variableDisplays: {},
     isRunning: false,
     fpcPlayer: null,
-    solids: [],
-
+    velocityy: 0,
+    isGrounded: true,
+    gravity: -0.015,
     mouseDelta: { x: 0, y: 0 },
-    textures: {},
+
     init() {
         let c = document.getElementById('canvas3d');
+        if (!c) return;
+
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, c.clientWidth / c.clientHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(c.clientWidth, c.clientHeight);
         c.appendChild(this.renderer.domElement);
-        // In deiner engine.js (innerhalb der init-Funktion)
+
         const geometry = new THREE.PlaneGeometry(100, 100);
         const material = new THREE.MeshStandardMaterial({ color: 0x808080 });
-        const floor = new THREE.Mesh(geometry, material);
-
-        floor.rotation.x = -Math.PI / 2; // Flach hinlegen
-        floor.receiveShadow = true;
-        floor.name = "mainFloor"; // WICHTIG: Damit wir ihn finden
-        this.scene.add(floor);
-        this.floor = floor; // Referenz im App-Objekt speichern
+        this.floor = new THREE.Mesh(geometry, material);
+        this.floor.rotation.x = -Math.PI / 2;
+        this.floor.receiveShadow = true;
+        this.floor.name = "mainFloor";
+        this.scene.add(this.floor);
 
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         let l = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -120,7 +122,6 @@ window.App = {
         this.camera.position.set(8, 8, 8);
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
 
-
         window.addEventListener('keydown', (e) => {
             if (!this.isRunning) return;
             let k = e.key === " " ? " " : e.key;
@@ -128,58 +129,39 @@ window.App = {
             if (f) f();
         });
 
-
         window.addEventListener('mousemove', (e) => {
-            if (App.isRunning) {
-                App.mouseDelta.x = e.movementX || 0;
-                App.mouseDelta.y = e.movementY || 0;
+            if (this.isRunning) {
+                this.mouseDelta.x = e.movementX || 0;
+                this.mouseDelta.y = e.movementY || 0;
             }
         });
 
+        window.addEventListener('resize', () => this.onResize());
         this.animate();
     },
-    cloneObject: function (originalName, newId) {
-        const original = this.objects[originalName];
-        if (!original) {
-            console.warn("Clone-Fehler: Objekt '" + originalName + "' nicht gefunden.");
-            return;
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        if (this.isRunning) {
+            if (this.fpcPlayer) this.updateFPCLook();
+            this.updatePhysics();
+            this.tickListeners.forEach(f => f());
+            Object.values(this.objects).forEach(o => {
+                if (o.userData && o.userData.animations) {
+                    o.userData.animations.forEach(f => f());
+                }
+            });
         }
-
-        // 1. Objekt klonen
-        const clone = original.clone();
-
-        // 2. Neue ID zuweisen und im System registrieren
-        clone.name = newId;
-        this.objects[newId] = clone;
-
-        // 3. Zur Szene hinzufügen
-        this.scene.add(clone);
-
-        // 4. Explorer aktualisieren, damit der Klon in der Liste erscheint
-        this.updateExplorer();
-
-        console.log(`Objekt '${originalName}' wurde als '${newId}' geklont.`);
+        if (this.controls && this.controls.enabled) this.controls.update();
+        this.renderer.render(this.scene, this.camera);
     },
 
-    onResize() {
-        let c = document.getElementById('canvas3d');
-        this.camera.aspect = c.clientWidth / c.clientHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(c.clientWidth, c.clientHeight);
-    },
-    setRotation(name, axis, degree) {
-        const obj = this.objects[name];
-        if (obj) {
-
-            const radians = THREE.MathUtils.degToRad(parseFloat(degree));
-            obj.rotation[axis] = radians;
-        }
-    },
     spawn(t, c, n, p = "Szene") {
         if (this.objects[n]) this.scene.remove(this.objects[n]);
         let obj;
-        if (t === 'group') obj = new THREE.Group();
-        else {
+        if (t === 'group') {
+            obj = new THREE.Group();
+        } else {
             let g;
             switch (t) {
                 case 'sphere': g = new THREE.SphereGeometry(1, 32, 16); break;
@@ -191,57 +173,33 @@ window.App = {
         }
         obj.name = n;
         obj.userData = { animations: [] };
-
         if (p !== "Szene" && this.objects[p]) this.objects[p].add(obj);
         else this.scene.add(obj);
-
         this.objects[n] = obj;
         this.updateExplorer();
     },
 
-    registerKeyEvent(k, f) { this.keyListeners[k.toLowerCase()] = f; },
-
-    onTick(callback) { this.tickListeners.push(callback); },
+    cloneObject(originalName, newId) {
+        const original = this.objects[originalName];
+        if (!original) return;
+        const clone = original.clone();
+        clone.name = newId;
+        this.objects[newId] = clone;
+        this.scene.add(clone);
+        this.updateExplorer();
+    },
 
     move(n, a, v) { if (this.objects[n]) this.objects[n].position[a] += parseFloat(v); },
-
     transform(n, a, v) { if (this.objects[n]) this.objects[n].position[a] = parseFloat(v); },
-
     setScale(n, v) { if (this.objects[n]) this.objects[n].scale.set(v, v, v); },
-
+    setRotation(name, axis, degree) {
+        if (this.objects[name]) this.objects[name].rotation[axis] = THREE.MathUtils.degToRad(parseFloat(degree));
+    },
+    setDimension(name, axis, value) {
+        if (this.objects[name]) this.objects[name].scale[axis] = parseFloat(value);
+    },
     addRotation(n, a, s) {
         if (this.objects[n]) this.objects[n].userData.animations.push(() => this.objects[n].rotation[a] += s);
-    },
-
-    setLightIntensity(val) {
-        this.scene.traverse((child) => {
-            if (child instanceof THREE.DirectionalLight) child.intensity = parseFloat(val);
-        });
-    },
-
-    animate() {
-        requestAnimationFrame(() => this.animate());
-
-        if (this.isRunning) {
-            // 1. Blickrichtung aktualisieren (Maus)
-            if (this.fpcPlayer) this.updateFPCLook();
-
-            // 2. Physik (Schwerkraft/Boden)
-            this.updatePhysics();
-
-            // 3. Blockly-Events (onTick)
-            this.tickListeners.forEach(f => f());
-
-            // 4. Objekt-Animationen
-            Object.values(this.objects).forEach(o => {
-                if (o.userData && o.userData.animations) {
-                    o.userData.animations.forEach(f => f());
-                }
-            });
-        }
-
-        if (this.controls && this.controls.enabled) this.controls.update();
-        this.renderer.render(this.scene, this.camera);
     },
 
     setupFPC(name) {
@@ -261,571 +219,34 @@ window.App = {
         this.fpcPlayer.rotation.y -= this.mouseDelta.x * sensitivity;
         this.camera.rotation.x -= this.mouseDelta.y * sensitivity;
         this.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotation.x));
-
-
         this.mouseDelta = { x: 0, y: 0 };
-    },
-
-
-    run() {
-    this.stop();
-    this.isRunning = true;
-
-    const rawCode = Editor.getAllCode();
-    
-    // Wir packen den Code in eine 'async' Funktion
-    const executableCode = `(async () => {
-        try {
-            ${rawCode}
-        } catch (e) {
-            console.error("Fehler im Skript:", e);
-        }
-    })();`;
-
-    try {
-        eval(executableCode);
-    } catch (e) {
-        console.error("Eval Fehler:", e);
-    }
-},
-    removeUI(id) {
-        if (this.uiElements[id]) {
-            this.uiElements[id].remove();
-            delete this.uiElements[id];
-
-            delete this.variables[`btn_${id}_clicked`];
-        }
-    },
-    stop() {
-        this.isRunning = false;
-        this.solids = [];
-        document.body.classList.remove('running');
-
-        this.scene.attach(this.camera);
-
-        if (this.fpcPlayer) this.fpcPlayer.visible = true;
-
-        this.camera.position.set(8, 8, 8);
-        this.camera.lookAt(0, 0, 0);
-
-        Object.values(this.objects).forEach(o => this.scene.remove(o));
-        this.objects = {};
-        this.keyListeners = {};
-        this.tickListeners = [];
-        this.fpcPlayer = null;
-        this.controls.enabled = true;
-
-        if (document.pointerLockElement) {
-            document.exitPointerLock();
-        }
-        this.updateExplorer();
-    },
-    updateExplorer() {
-        const list = document.getElementById('sceneList');
-        if (!list) return;
-        list.innerHTML = "";
-
-
-        const section3D = document.createElement('div');
-        section3D.innerHTML = "<small style='color: #888;'>3D OBJEKTE</small>";
-        list.appendChild(section3D);
-
-        Object.keys(this.objects).forEach(name => {
-            const item = document.createElement('div');
-            item.className = "scene-item";
-            item.innerHTML = `<span>📦 ${name}</span>`;
-
-            item.onclick = () => console.log("3D Objekt gewählt:", name);
-            list.appendChild(item);
-        });
-
-
-        const hr = document.createElement('hr');
-        hr.style.border = "0; border-top: 1px solid #333; margin: 10px 0;";
-        list.appendChild(hr);
-
-
-        const sectionUI = document.createElement('div');
-        sectionUI.innerHTML = "<small style='color: #888;'>UI ELEMENTE</small>";
-        list.appendChild(sectionUI);
-
-        Object.keys(this.uiElements).forEach(id => {
-            const item = document.createElement('div');
-            item.className = "scene-item ui-item";
-
-            const type = this.uiElements[id].tagName.toLowerCase() === 'button' ? 'Button' : 'Frame';
-            item.innerHTML = `<span>🖼️ ${id} <small>(${type})</small></span>`;
-
-
-            item.onclick = () => {
-                const el = this.uiElements[id];
-                el.style.outline = "2px solid #4CFF00";
-                setTimeout(() => el.style.outline = "none", 500);
-            };
-            list.appendChild(item);
-        });
-    },
-    setViewMode(mode) {
-        this.viewMode = mode;
-        if (!this.fpcPlayer || !this.camera) return;
-
-
-        if (this.camera.parent !== this.fpcPlayer) {
-            this.fpcPlayer.add(this.camera);
-        }
-
-        if (mode === 'fp') {
-
-            this.camera.position.set(0, 1.6, 0);
-            this.camera.rotation.set(0, 0, 0);
-            this.fpcPlayer.visible = false;
-        } else {
-
-            this.camera.position.set(0, 4, 8);
-
-
-            this.camera.lookAt(new THREE.Vector3(0, 1.6, 0));
-
-            this.fpcPlayer.visible = true;
-        }
-    },
-    setUIText(id, text) {
-        const el = this.uiElements[id];
-        if (el) {
-
-            el.innerText = text;
-        } else {
-            console.warn(`UI-Text Fehler: Element mit ID '${id}' nicht gefunden.`);
-        }
-    },
-    setDimension(name, axis, value) {
-        const obj = this.objects[name];
-        if (obj) {
-            const val = parseFloat(value);
-
-            obj.scale[axis] = val;
-
-        }
-    },
-
-    setSolid(name, isSolid) {
-        const obj = this.objects[name];
-        if (!obj) return;
-
-        if (isSolid) {
-            if (!this.solids.includes(obj)) this.solids.push(obj);
-        } else {
-            this.solids = this.solids.filter(s => s !== obj);
-        }
-    },
-    checkCollision(currentPos, direction, distance) {
-        if (this.solids.length === 0) return false;
-
-        const raycaster = new THREE.Raycaster(currentPos, direction.clone().normalize());
-
-
-        const intersections = raycaster.intersectObjects(this.solids);
-
-        if (intersections.length > 0) {
-
-            if (intersections[0].distance < distance + 0.5) {
-                return true;
-            }
-        }
-        return false;
     },
 
     moveFPC(dir, speed) {
         if (!this.fpcPlayer) return;
         const s = parseFloat(speed);
         const moveVec = new THREE.Vector3();
-
         if (dir === 'forward') moveVec.z -= s;
         if (dir === 'backward') moveVec.z += s;
         if (dir === 'left') moveVec.x -= s;
         if (dir === 'right') moveVec.x += s;
-
         moveVec.applyQuaternion(this.fpcPlayer.quaternion);
-
-
-        const isWallInWay = this.checkCollision(
-            this.fpcPlayer.position,
-            moveVec,
-            s
-        );
-
-        if (!isWallInWay) {
+        if (!this.checkCollision(this.fpcPlayer.position, moveVec, s)) {
             this.fpcPlayer.position.add(moveVec);
         }
     },
-    toggleFullscreen: function (enable) {
-        const panel = document.getElementById('sidePanel');
-        const resizer = document.getElementById('resizer');
 
-        // Die beiden Buttons holen
-        const btnMax = document.getElementById('goFullscreen');
-        const btnMin = document.getElementById('exitFullscreen');
-
-        if (enable) {
-            panel.classList.add('fullscreen');
-            if (resizer) resizer.style.display = 'none';
-
-            // Buttons umschalten
-            if (btnMax) btnMax.style.display = 'none';
-            if (btnMin) btnMin.style.display = 'block';
-        } else {
-            panel.classList.remove('fullscreen');
-            if (resizer) resizer.style.display = 'block';
-
-            // Buttons umschalten
-            if (btnMax) btnMax.style.display = 'block';
-            if (btnMin) btnMin.style.display = 'none';
-        }
-
-        // Three.js Resize auslösen
-        setTimeout(() => {
-            this.onWindowResize();
-        }, 100);
-    },
-
-    // Hilfsfunktion für das Resize (sollte in deiner engine.js sein)
-    onWindowResize: function () {
-        if (!this.camera || !this.renderer) return;
-
-        const container = document.getElementById('canvas3d');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
-    },
-
-    variableDisplays: {},
-
-    displayVariable(name, label) {
-        let hud = document.getElementById('gameHUD');
-        if (!this.variableDisplays[name]) {
-            let el = document.createElement('div');
-            el.id = "hud-" + name;
-            hud.appendChild(el);
-            this.variableDisplays[name] = el;
-        }
-
-        this.variableDisplays[name].innerText = `${label}: ${this.getVariable(name)}`;
-    },
-
-    stop() {
-        this.isRunning = false;
-        document.body.classList.remove('running');
-
-
-        Object.keys(this.uiElements).forEach(id => {
-            if (this.uiElements[id]) this.uiElements[id].remove();
-        });
-        this.uiElements = {};
-
-        const hud = document.getElementById('gameHUD');
-        if (hud) hud.innerHTML = "";
-        this.variableDisplays = {};
-
-
-        if (this.camera) {
-            this.scene.attach(this.camera);
-            this.camera.position.set(8, 8, 8);
-            this.camera.lookAt(0, 0, 0);
-        }
-
-        if (this.fpcPlayer) this.fpcPlayer.visible = true;
-
-
-        Object.values(this.objects).forEach(o => this.scene.remove(o));
-
-
-        this.objects = {};
-        this.solids = [];
-        this.keyListeners = {};
-        this.tickListeners = [];
-        this.variables = {};
-        this.fpcPlayer = null;
-
-        if (this.controls) this.controls.enabled = true;
-        if (document.pointerLockElement) {
-            document.exitPointerLock();
-        }
-
-        this.updateExplorer();
-        console.log("> System gestoppt und bereinigt.");
-    },
-
-    applyTexture(objName, texName) {
-        const obj = this.objects[objName];
-        const texData = this.textures[texName];
-        if (obj && texData) {
-            const loader = new THREE.TextureLoader();
-            loader.load(texData, (texture) => {
-
-                texture.magFilter = THREE.NearestFilter;
-                texture.minFilter = THREE.NearestFilter;
-                obj.material.map = texture;
-                obj.material.needsUpdate = true;
-            });
-        }
-    },
-    setSkybox: function (textureName) {
-        if (!this.textures || !this.textures[textureName]) {
-            console.warn("Skybox-Fehler: Textur '" + textureName + "' nicht gefunden.");
-            return;
-        }
-
-        const loader = new THREE.TextureLoader();
-        // Hole die Base64-Daten der Textur aus deinem Speicher
-        const textureData = this.textures[textureName];
-
-        loader.load(textureData, (texture) => {
-            // Three.js Skybox Logik
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            this.scene.background = texture;
-            console.log("Skybox aktualisiert: " + textureName);
-        });
-    },
-    setFloor: function (textureName) {
-        // 1. Sicherheitcheck: Existiert die Textur?
-        if (!this.textures || !this.textures[textureName]) {
-            console.error("Boden-Fehler: Textur '" + textureName + "' nicht gefunden.");
-            return;
-        }
-
-        // 2. Suche das Boden-Objekt in deiner Szene
-        // Falls du keine 'this.floor' Variable hast, suchen wir nach dem Namen
-        const ground = this.floor || this.scene.getObjectByName("ground");
-
-        if (!ground) {
-            console.warn("Kein Boden-Objekt in der Szene gefunden!");
-            return;
-        }
-
-        // 3. Textur laden und zuweisen
-        const loader = new THREE.TextureLoader();
-        loader.load(this.textures[textureName], (texture) => {
-            // Einstellungen für Kachelung (Wiederholung der Textur)
-            texture.wrapS = THREE.RepeatWrapping;
-            texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(10, 10); // Wie oft die Textur wiederholt wird
-
-            // Dem Material zuweisen
-            if (ground.material) {
-                ground.material.map = texture;
-                ground.material.needsUpdate = true;
-            }
-            console.log("Boden-Textur geändert zu:", textureName);
-        });
-    },
-
-
-
-
-    variables: {},
-
-    getVariable(name) { return this.variables[name] || 0; },
-    setVariable(name, val) { this.variables[name] = val; },
-
-    checkCollisionBetween(name1, name2) {
-        const obj1 = this.objects[name1];
-        const obj2 = this.objects[name2];
-        if (!obj1 || !obj2) return false;
-
-
-        const box1 = new THREE.Box3().setFromObject(obj1);
-        const box2 = new THREE.Box3().setFromObject(obj2);
-        return box1.intersectsBox(box2);
-    },
-
-    getObjectColor(name) {
-        const obj = this.objects[name];
-        if (obj && obj.material) {
-            return "#" + obj.material.color.getHexString();
-        }
-        return "#ffffff";
-    },
-
-
-    uiElements: {},
-    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
-        // 1. Altes Element entfernen, falls ID schon existiert
-        if (this.uiElements[id]) {
-            this.uiElements[id].remove();
-        }
-
-        const el = document.createElement(type === 'button' ? 'button' : 'div');
-
-        // WICHTIG: Benutze die reine ID, damit getElementById(id) funktioniert
-        el.id = id;
-
-        // Basis-Styling
-        el.style.position = "absolute";
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        el.style.width = w + "px";
-        el.style.height = h + "px";
-        el.style.zIndex = "100";
-        el.style.display = "flex"; // Standardmäßig flex, aber wir steuern Sichtbarkeit über opacity/display
-
-        // NEU: Transition für weiches Ein-/Ausblenden hinzufügen
-        el.style.transition = "opacity 0.3s ease";
-        el.style.opacity = "1"; // Standardmäßig voll sichtbar beim Erstellen
-
-        // ... (Dein restliches Styling: alignItems, font, etc.) ...
-        el.style.alignItems = "center";
-        el.style.justifyContent = "center";
-        el.style.fontFamily = "sans-serif";
-        el.style.boxSizing = "border-box";
-        el.style.border = "none";
-
-        // Button Logik
-        if (type === 'button') {
-            el.innerText = text;
-            el.style.cursor = "pointer";
-            el.onclick = () => {
-                this.setVariable(`btn_${id}_clicked`, true);
-            };
-        }
-
-        // Scrolling Frame Logik
-        if (type === 'scrolling_frame') {
-            el.style.overflowY = "auto";
-            el.style.overflowX = "hidden";
-            el.style.display = "block";
-        }
-
-        // Textur oder Default-Farben
-        if (texture && texture !== "none" && this.textures[texture]) {
-            el.style.backgroundImage = `url(${this.textures[texture]})`;
-            el.style.backgroundSize = "100% 100%";
-            el.style.backgroundRepeat = "no-repeat";
-            el.style.backgroundColor = "transparent";
-        } else {
-            if (type === 'button') {
-                el.style.backgroundColor = "#444";
-                el.style.color = "white";
-            } else {
-                el.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                el.style.border = "1px solid #555";
-            }
-        }
-
-        // Container finden und hinzufügen
-        let targetContainer = document.getElementById('canvas3d');
-        if (parentId && this.uiElements[parentId]) {
-            targetContainer = this.uiElements[parentId];
-        }
-
-        if (targetContainer) {
-            targetContainer.appendChild(el);
-            this.uiElements[id] = el; // Hier speichern wir die Referenz
-        } else {
-            console.error(`UI Fehler: Container für ID ${id} nicht gefunden!`);
-        }
-
-        this.updateExplorer();
-    },
-
-    isButtonClicked(id) {
-        const varName = `btn_${id}_clicked`;
-        const clicked = this.getVariable(varName);
-
-        if (clicked === true) {
-            this.setVariable(varName, false);
-            return true;
-        }
-        return false;
-    },
-    animateUI(id, type) {
-        const el = this.uiElements[id];
-        if (!el) return;
-
-        el.style.transition = "all 0.3s ease-out";
-
-        switch (type) {
-            case 'pop':
-                el.style.transform = "scale(1.2)";
-                setTimeout(() => el.style.transform = "scale(1)", 200);
-                break;
-            case 'fade_in':
-                el.style.opacity = "0";
-                el.style.display = "block";
-                setTimeout(() => el.style.opacity = "1", 10);
-                break;
-            case 'fade_out':
-                el.style.opacity = "0";
-                setTimeout(() => el.style.display = "none", 300);
-                break;
-            case 'slide_up':
-                const originalY = el.offsetTop;
-                el.style.top = (originalY + 20) + "px";
-                el.style.opacity = "0";
-                setTimeout(() => {
-                    el.style.top = originalY + "px";
-                    el.style.opacity = "1";
-                }, 10);
-                break;
-        }
-    },
-
-
-    setHoverEffect(id, scale, brightness) {
-        const el = this.uiElements[id];
-        if (!el) return;
-        el.style.transition = "transform 0.2s, filter 0.2s";
-        el.onmouseenter = () => {
-            el.style.transform = `scale(${scale})`;
-            el.style.filter = `brightness(${brightness}%)`;
-        };
-        el.onmouseleave = () => {
-            el.style.transform = "scale(1)";
-            el.style.filter = "brightness(100%)";
-        };
-    },
-
-    styleUI(id, props) {
-        const el = this.uiElements[id];
-        if (!el) return;
-
-        if (props.radius !== undefined) el.style.borderRadius = props.radius + "px";
-        if (props.bgColor !== undefined) {
-
-            el.style.backgroundColor = props.bgColor;
-        }
-        if (props.opacity !== undefined) {
-            el.style.opacity = props.opacity;
-        }
-        if (props.strokeWidth !== undefined) {
-            el.style.border = `${props.strokeWidth}px solid ${props.strokeColor || '#ffffff'}`;
-        }
-        if (props.padding !== undefined) {
-            el.style.padding = props.padding + "px";
-        }
-    },
-    velocityy: 0,      // Vertikale Geschwindigkeit
-    isGrounded: true,  // Prüft, ob der Spieler den Boden berührt
-    gravity: -0.015,   // Wie stark die Schwerkraft zieht
-
-    jump: function (force) {
+    jump(force) {
         if (this.isGrounded) {
             this.velocityy = parseFloat(force);
             this.isGrounded = false;
-            console.log("Sprung!");
         }
     },
 
-    updatePhysics: function () {
+    updatePhysics() {
         if (!this.isRunning || !this.fpcPlayer) return;
-
-        // Schwerkraft
-        this.velocityy = (this.velocityy || 0) + (this.gravity || -0.015);
+        this.velocityy += this.gravity;
         this.fpcPlayer.position.y += this.velocityy;
-
-        // Boden-Check (y=0)
         if (this.fpcPlayer.position.y <= 0) {
             this.fpcPlayer.position.y = 0;
             this.velocityy = 0;
@@ -834,78 +255,274 @@ window.App = {
             this.isGrounded = false;
         }
     },
-};
 
-window.addEventListener('load', () => App.init());
-window.switchTab = function (tab) {
-    const logic = document.getElementById('blocklyArea');
-    const texture = document.getElementById('textureEditor');
-    const btnLogic = document.getElementById('btn-logic');
-    const btnTexture = document.getElementById('btn-texture');
+    setSolid(name, isSolid) {
+        const obj = this.objects[name];
+        if (!obj) return;
+        if (isSolid) {
+            if (!this.solids.includes(obj)) this.solids.push(obj);
+        } else {
+            this.solids = this.solids.filter(s => s !== obj);
+        }
+    },
 
-    if (tab === 'logic') {
-        logic.style.display = 'block';
-        texture.style.display = 'none';
-        btnLogic.classList.add('active');
-        btnTexture.classList.remove('active');
+    checkCollision(currentPos, direction, distance) {
+        if (this.solids.length === 0) return false;
+        const raycaster = new THREE.Raycaster(currentPos, direction.clone().normalize());
+        const intersections = raycaster.intersectObjects(this.solids);
+        return intersections.length > 0 && intersections[0].distance < distance + 0.5;
+    },
 
-        Blockly.svgResize(window.workspace);
-    } else {
-        logic.style.display = 'none';
-        texture.style.display = 'flex';
-        btnLogic.classList.remove('active');
-        btnTexture.classList.add('active');
+    checkCollisionBetween(name1, name2) {
+        const obj1 = this.objects[name1];
+        const obj2 = this.objects[name2];
+        if (!obj1 || !obj2) return false;
+        const box1 = new THREE.Box3().setFromObject(obj1);
+        const box2 = new THREE.Box3().setFromObject(obj2);
+        return box1.intersectsBox(box2);
+    },
 
-        if (!TextureEditor.initialized) TextureEditor.init();
+    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+        if (this.uiElements[id]) this.uiElements[id].remove();
+        const el = document.createElement(type === 'button' ? 'button' : 'div');
+        el.id = id;
+        Object.assign(el.style, {
+            position: "absolute", left: x + "px", top: y + "px", width: w + "px", height: h + "px",
+            zIndex: "100", display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "sans-serif", boxSizing: "border-box", border: "none", transition: "opacity 0.3s ease", opacity: "1"
+        });
+
+        if (type === 'button') {
+            el.innerText = text;
+            el.style.cursor = "pointer";
+            el.onclick = () => this.setVariable(`btn_${id}_clicked`, true);
+        } else if (type === 'scrolling_frame') {
+            el.style.overflowY = "auto";
+            el.style.display = "block";
+        }
+
+        if (texture && texture !== "none" && this.textures[texture]) {
+            el.style.backgroundImage = `url(${this.textures[texture]})`;
+            el.style.backgroundSize = "100% 100%";
+            el.style.backgroundColor = "transparent";
+        } else {
+            el.style.backgroundColor = type === 'button' ? "#444" : "rgba(0,0,0,0.5)";
+            if (type === 'button') el.style.color = "white";
+        }
+
+        let target = (parentId && this.uiElements[parentId]) ? this.uiElements[parentId] : document.getElementById('canvas3d');
+        if (target) {
+            target.appendChild(el);
+            this.uiElements[id] = el;
+        }
+        this.updateExplorer();
+    },
+
+    setUIVisibility(id, visible) {
+        const el = this.uiElements[id] || document.getElementById(id);
+        if (!el) return;
+        if (el._hideTimer) clearTimeout(el._hideTimer);
+        if (visible) {
+            el.style.display = "flex";
+            void el.offsetWidth;
+            el.style.opacity = "1";
+            el.style.pointerEvents = "auto";
+        } else {
+            el.style.opacity = "0";
+            el.style.pointerEvents = "none";
+            el._hideTimer = setTimeout(() => { if (el.style.opacity === "0") el.style.display = "none"; }, 300);
+        }
+    },
+
+    setUIText(id, text) {
+        if (this.uiElements[id]) this.uiElements[id].innerText = text;
+    },
+
+    styleUI(id, props) {
+        const el = this.uiElements[id];
+        if (!el) return;
+        if (props.radius !== undefined) el.style.borderRadius = props.radius + "px";
+        if (props.bgColor !== undefined) el.style.backgroundColor = props.bgColor;
+        if (props.opacity !== undefined) el.style.opacity = props.opacity;
+        if (props.padding !== undefined) el.style.padding = props.padding + "px";
+        if (props.strokeWidth !== undefined) el.style.border = `${props.strokeWidth}px solid ${props.strokeColor || '#fff'}`;
+    },
+
+    animateUI(id, type) {
+        const el = this.uiElements[id];
+        if (!el) return;
+        el.style.transition = "all 0.3s ease-out";
+        if (type === 'pop') {
+            el.style.transform = "scale(1.2)";
+            setTimeout(() => el.style.transform = "scale(1)", 200);
+        } else if (type === 'fade_in') {
+            this.setUIVisibility(id, true);
+        } else if (type === 'fade_out') {
+            this.setUIVisibility(id, false);
+        }
+    },
+
+    setHoverEffect(id, scale, brightness) {
+        const el = this.uiElements[id];
+        if (!el) return;
+        el.style.transition = "transform 0.2s, filter 0.2s";
+        el.onmouseenter = () => { el.style.transform = `scale(${scale})`; el.style.filter = `brightness(${brightness}%)`; };
+        el.onmouseleave = () => { el.style.transform = "scale(1)"; el.style.filter = "brightness(100%)"; };
+    },
+
+    isButtonClicked(id) {
+        const varName = `btn_${id}_clicked`;
+        if (this.getVariable(varName) === true) {
+            this.setVariable(varName, false);
+            return true;
+        }
+        return false;
+    },
+
+    applyTexture(objName, texName) {
+        const obj = this.objects[objName];
+        const texData = this.textures[texName];
+        if (obj && texData) {
+            new THREE.TextureLoader().load(texData, (t) => {
+                t.magFilter = t.minFilter = THREE.NearestFilter;
+                obj.material.map = t;
+                obj.material.needsUpdate = true;
+            });
+        }
+    },
+
+    setSkybox(textureName) {
+        if (this.textures[textureName]) {
+            new THREE.TextureLoader().load(this.textures[textureName], (t) => {
+                t.mapping = THREE.EquirectangularReflectionMapping;
+                this.scene.background = t;
+            });
+        }
+    },
+
+    setFloor(textureName) {
+        if (this.textures[textureName] && this.floor) {
+            new THREE.TextureLoader().load(this.textures[textureName], (t) => {
+                t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                t.repeat.set(10, 10);
+                this.floor.material.map = t;
+                this.floor.material.needsUpdate = true;
+            });
+        }
+    },
+
+    getVariable(name) { return this.variables[name] !== undefined ? this.variables[name] : 0; },
+    setVariable(name, val) { this.variables[name] = val; },
+    displayVariable(name, label) {
+        let hud = document.getElementById('gameHUD');
+        if (!hud) return;
+        if (!this.variableDisplays[name]) {
+            let el = document.createElement('div');
+            el.id = "hud-" + name;
+            hud.appendChild(el);
+            this.variableDisplays[name] = el;
+        }
+        this.variableDisplays[name].innerText = `${label}: ${this.getVariable(name)}`;
+    },
+
+    getPlayerPosition() {
+        if (!this.fpcPlayer) return null;
+        const v = new THREE.Vector3();
+        this.fpcPlayer.getWorldPosition(v);
+        return { x: v.x, y: v.y, z: v.z };
+    },
+
+    getObjectPosition(name) {
+        if (!this.objects[name]) return null;
+        const v = new THREE.Vector3();
+        this.objects[name].getWorldPosition(v);
+        return { x: v.x, y: v.y, z: v.z };
+    },
+
+    onResize() {
+        let c = document.getElementById('canvas3d');
+        if (!c || !this.renderer) return;
+        this.camera.aspect = c.clientWidth / c.clientHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(c.clientWidth, c.clientHeight);
+    },
+
+    updateExplorer() {
+        const list = document.getElementById('sceneList');
+        if (!list) return;
+        list.innerHTML = "<small style='color: #888;'>3D OBJEKTE</small>";
+        Object.keys(this.objects).forEach(name => {
+            const item = document.createElement('div');
+            item.className = "scene-item";
+            item.innerHTML = `<span>📦 ${name}</span>`;
+            list.appendChild(item);
+        });
+        list.innerHTML += "<hr style='border:0; border-top:1px solid #333; margin:10px 0;'><small style='color: #888;'>UI ELEMENTE</small>";
+        Object.keys(this.uiElements).forEach(id => {
+            const item = document.createElement('div');
+            item.className = "scene-item ui-item";
+            const type = this.uiElements[id].tagName.toLowerCase() === 'button' ? 'Button' : 'Frame';
+            item.innerHTML = `<span>🖼️ ${id} <small>(${type})</small></span>`;
+            list.appendChild(item);
+        });
+    },
+
+    onTick(callback) { this.tickListeners.push(callback); },
+    registerKeyEvent(k, f) { this.keyListeners[k.toLowerCase()] = f; },
+
+    run() {
+        this.stop();
+        this.isRunning = true;
+        const rawCode = Editor.getAllCode();
+        const executableCode = `(async () => { try { ${rawCode} } catch (e) { console.error("Skriptfehler:", e); } })();`;
+        try { eval(executableCode); } catch (e) { console.error("Eval Fehler:", e); }
+    },
+
+    stop() {
+        this.isRunning = false;
+        Object.values(this.uiElements).forEach(el => el.remove());
+        this.uiElements = {};
+        const hud = document.getElementById('gameHUD');
+        if (hud) hud.innerHTML = "";
+        if (this.camera) {
+            this.scene.attach(this.camera);
+            this.camera.position.set(8, 8, 8);
+            this.camera.lookAt(0, 0, 0);
+        }
+        Object.values(this.objects).forEach(o => this.scene.remove(o));
+        this.objects = {};
+        this.solids = [];
+        this.keyListeners = {};
+        this.tickListeners = [];
+        this.variables = {};
+        this.variableDisplays = {};
+        this.fpcPlayer = null;
+        if (this.controls) this.controls.enabled = true;
+        if (document.pointerLockElement) document.exitPointerLock();
+        this.updateExplorer();
     }
 };
 
 window.UI = {
-    loadFromCloud: async function (projectName) {
-        // 1. Hole die UID des Besitzers aus der URL, falls vorhanden
+    async loadFromCloud(projectName) {
         const urlParams = new URLSearchParams(window.location.search);
-        const projectOwner = urlParams.get('owner');
-
-        // 2. Bestimme, wessen Daten geladen werden sollen
-        // Wenn kein 'owner' in der URL ist, lade vom aktuell angemeldeten User
-        const targetUID = projectOwner || (AuthHandler.user ? AuthHandler.user.uid : null);
-
-        if (!targetUID) {
-            console.error("Laden fehlgeschlagen: Kein Besitzer gefunden.");
-            return;
-        }
-
+        const targetUID = urlParams.get('owner') || (window.AuthHandler && AuthHandler.user ? AuthHandler.user.uid : null);
+        if (!targetUID) return;
         try {
-            console.log(`Lade Projekt "${projectName}" von User: ${targetUID}`);
-            const doc = await firebase.firestore()
-                .collection('users')
-                .doc(targetUID) // Hier nutzen wir die targetUID statt AuthHandler.user.uid
-                .collection('projects')
-                .doc(projectName)
-                .get();
-
+            const doc = await firebase.firestore().collection('users').doc(targetUID).collection('projects').doc(projectName).get();
             if (doc.exists) {
                 const data = doc.data();
-
-                // ... (restliche Logik zum Setzen von window.Editor.scripts und window.App.textures)
-
-                // WICHTIG: Falls Scripts als String gespeichert wurden (Base64)
                 if (typeof data.scripts === 'string') {
-                    const decoded = decodeURIComponent(escape(atob(data.scripts)));
-                    window.Editor.scripts = JSON.parse(decoded);
+                    window.Editor.scripts = JSON.parse(decodeURIComponent(escape(atob(data.scripts))));
                 } else {
                     window.Editor.scripts = data.scripts || { "main": {} };
                 }
-
-                // Workspace aktualisieren
+                window.App.textures = data.textures || {};
                 this.refreshWorkspace();
-                console.log("✅ Projekt erfolgreich geladen!");
+                window.Editor.renderList();
             }
-        } catch (error) {
-            console.error("Firestore Fehler:", error);
-        }
+        } catch (e) { console.error("Load Fehler:", e); }
     },
-
     refreshWorkspace() {
         if (window.workspace && window.Editor.scripts[window.Editor.currentScript]) {
             window.workspace.clear();
@@ -913,52 +530,5 @@ window.UI = {
         }
     }
 };
-// In deiner Engine-Datei (z.B. engine.js) hinzufügen:
 
-App.setUIVisibility = function (id, visible) {
-    const el = document.getElementById(id) || document.getElementById("ui-" + id);
-    if (!el) return;
-
-    // Alle laufenden Timer für dieses Element stoppen
-    if (el._hideTimer) clearTimeout(el._hideTimer);
-
-    if (visible) {
-        el.style.display = "flex";
-        // Kleiner Trick: OffsetWidth erzwingt, dass der Browser das "flex" registriert
-        void el.offsetWidth;
-        el.style.opacity = "1";
-        el.style.pointerEvents = "auto";
-    } else {
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none";
-
-        // Wir setzen einen Timer, aber wir setzen ZUSÄTZLICH eine Notbremse
-        el._hideTimer = setTimeout(() => {
-            // Nur ausblenden, wenn die Opacity immer noch 0 ist
-            if (el.style.opacity === "0") {
-                el.style.display = "none";
-                console.log(`UI ${id} wurde jetzt final auf display:none gesetzt.`);
-            }
-        }, 300);
-    }
-};
-
-App.getPlayerPosition = function () {
-    // WICHTIG: Nutze fpcPlayer, da dein setupFPC diesen Namen verwendet
-    const p = this.fpcPlayer;
-    if (!p) return null;
-
-    const target = new THREE.Vector3();
-    p.getWorldPosition(target);
-    return { x: target.x, y: target.y, z: target.z };
-};
-
-App.getObjectPosition = function (name) {
-    // Suche in der App.objects Liste
-    const obj = this.objects[name];
-    if (!obj) return null;
-
-    const target = new THREE.Vector3();
-    obj.getWorldPosition(target);
-    return { x: target.x, y: target.y, z: target.z };
-};
+window.addEventListener('load', () => App.init());
