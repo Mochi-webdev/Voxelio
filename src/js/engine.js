@@ -622,3 +622,23 @@ window.UI = {
 };
 
 window.addEventListener('load', () => App.init());
+window.switchTab = function (tab) {
+    const logicTab = document.getElementById('blocklyArea');
+    const textureTab = document.getElementById('textureEditor');
+    const btnLogic = document.getElementById('btn-logic');
+    const btnTexture = document.getElementById('btn-texture');
+
+    if (tab === 'logic') {
+        logicTab.style.display = 'block';
+        textureTab.style.display = 'none';
+        btnLogic.classList.add('active');
+        btnTexture.classList.remove('active');
+        // Blockly muss wissen, dass sich die Größe geändert haben könnte
+        if (window.workspace) Blockly.svgResize(window.workspace);
+    } else {
+        logicTab.style.display = 'none';
+        textureTab.style.display = 'block';
+        btnLogic.classList.remove('active');
+        btnTexture.classList.add('active');
+    }
+};
