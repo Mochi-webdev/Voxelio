@@ -8,12 +8,52 @@ Blockly.Blocks['event_tick'] = { init: function () { this.appendDummyInput().app
 // --- 3D SHAPES & TRANSFORM ---
 Blockly.Blocks['create_group'] = { init: function () { this.appendDummyInput().appendField("Gruppe:").appendField(new Blockly.FieldTextInput("ordner1"), "NAME"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(260); } };
 Blockly.Blocks['create_shape'] = { init: function () { this.appendDummyInput().appendField("Erstelle").appendField(new Blockly.FieldDropdown([["Würfel", "box"], ["Kugel", "sphere"], ["Torus", "torus"], ["Zylinder", "cylinder"]]), "TYPE").appendField("Name:").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("in:").appendField(new Blockly.FieldTextInput("Szene"), "PARENT"); this.appendValueInput("COL").setCheck("Colour").appendField("Farbe:"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
-Blockly.Blocks['set_position'] = { init: function () { this.appendDummyInput().appendField("Setze").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS").appendField("auf"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['move_object'] = { init: function () { this.appendDummyInput().appendField("Bewege").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS").appendField("um"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['set_scale'] = { init: function () { this.appendDummyInput().appendField("Größe von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("auf:"); this.appendValueInput("VAL").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['rotate_forever'] = { init: function () { this.appendDummyInput().appendField("Drehe").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("fortlaufend Achse:").appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
 Blockly.Blocks['set_dimensions'] = { init: function () { this.appendDummyInput().appendField("Setze").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["Breite (X)", "x"], ["Höhe (Y)", "y"], ["Tiefe (Z)", "z"]]), "AXIS").appendField("auf"); this.appendValueInput("VALUE").setCheck("Number"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
-Blockly.Blocks['set_rotation'] = { init: function () { this.appendDummyInput().appendField("Setze Rotation von").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS").appendField("auf"); this.appendValueInput("DEGREE").setCheck("Number"); this.appendDummyInput().appendField("Grad"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
+Blockly.Blocks['set_position'] = { 
+    init: function () { 
+        this.appendValueInput("NAME").setCheck("String").appendField("Setze Objekt"); // Changed to Value Input
+        this.appendDummyInput()
+            .appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS")
+            .appendField("auf"); 
+        this.appendValueInput("VAL").setCheck("Number"); 
+        this.setInputsInline(true);
+        this.setPreviousStatement(true); 
+        this.setNextStatement(true); 
+        this.setColour(160); 
+    } 
+};
+
+Blockly.Blocks['set_rotation'] = { 
+    init: function () { 
+        this.appendValueInput("NAME").setCheck("String").appendField("Setze Rotation von"); // Changed to Value Input
+        this.appendDummyInput()
+            .appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS")
+            .appendField("auf"); 
+        this.appendValueInput("DEGREE").setCheck("Number"); 
+        this.appendDummyInput().appendField("Grad"); 
+        this.setInputsInline(true);
+        this.setPreviousStatement(true); 
+        this.setNextStatement(true); 
+        this.setColour(160); 
+    } 
+};
+
+// Apply the same logic to move_object if needed:
+Blockly.Blocks['move_object'] = { 
+    init: function () { 
+        this.appendValueInput("NAME").setCheck("String").appendField("Bewege"); 
+        this.appendDummyInput()
+            .appendField(new Blockly.FieldDropdown([["X", "x"], ["Y", "y"], ["Z", "z"]]), "AXIS")
+            .appendField("um"); 
+        this.appendValueInput("VAL").setCheck("Number"); 
+        this.setInputsInline(true);
+        this.setPreviousStatement(true); 
+        this.setNextStatement(true); 
+        this.setColour(160); 
+    } 
+};
 Blockly.Blocks['set_texture'] = {
     init: function () {
 
@@ -370,14 +410,32 @@ GC.forBlock['event_tick'] = (b, g) => {
 // --- 3D & TRANSFORM GENERATORS ---
 GC.forBlock['create_group'] = wrap(b => `App.spawn('group', '#ffffff', '${b.getFieldValue('NAME')}');\n`);
 GC.forBlock['create_shape'] = wrap((b, g) => `App.spawn('${b.getFieldValue('TYPE')}', ${g.valueToCode(b, 'COL', ORDER_ATOMIC) || "'#ffffff'"}, '${b.getFieldValue('NAME')}', '${b.getFieldValue('PARENT')}');\n`);
-GC.forBlock['set_position'] = wrap((b, g) => `App.transform('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0});\n`);
-GC.forBlock['move_object'] = wrap((b, g) => `App.move('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0});\n`);
 GC.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 1});\n`);
 GC.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
 GC.forBlock['set_dimensions'] = wrap((b, g) => `App.setDimension('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || 1});\n`);
-GC.forBlock['set_rotation'] = wrap((b, g) => `App.setRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'DEGREE', ORDER_ATOMIC) || 0});\n`);
 GC.forBlock['set_texture'] = wrap((b) => { const tex = b.getFieldValue('TEX'); return tex === "none" ? "" : `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`; });
+// --- UPDATED GENERATORS ---
 
+GC.forBlock['set_position'] = wrap((b, g) => {
+    const name = g.valueToCode(b, 'NAME', ORDER_ATOMIC) || "''"; // Get name from input
+    const axis = b.getFieldValue('AXIS');
+    const val = g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0;
+    return `App.transform(${name}, '${axis}', ${val});\n`;
+});
+
+GC.forBlock['set_rotation'] = wrap((b, g) => {
+    const name = g.valueToCode(b, 'NAME', ORDER_ATOMIC) || "''"; // Get name from input
+    const axis = b.getFieldValue('AXIS');
+    const degree = g.valueToCode(b, 'DEGREE', ORDER_ATOMIC) || 0;
+    return `App.setRotation(${name}, '${axis}', ${degree});\n`;
+});
+
+GC.forBlock['move_object'] = wrap((b, g) => {
+    const name = g.valueToCode(b, 'NAME', ORDER_ATOMIC) || "''"; // Get name from input
+    const axis = b.getFieldValue('AXIS');
+    const val = g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 0;
+    return `App.move(${name}, '${axis}', ${val});\n`;
+});
 // --- CONTROLS & PHYSICS GENERATORS ---
 GC.forBlock['setup_fpc'] = (b) => `App.setupFPC('${b.getFieldValue('NAME')}');\n`;
 GC.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
