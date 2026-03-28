@@ -285,6 +285,19 @@ Blockly.Blocks['set_ui_visible_manual'] = {
     this.setTooltip("Schaltet die Sichtbarkeit eines UI-Elements manuell um.");
   }
 };
+Blockly.Blocks['wait_seconds'] = {
+  init: function() {
+    this.appendValueInput("SECONDS")
+        .setCheck("Number")
+        .appendField("Warte");
+    this.appendDummyInput()
+        .appendField("Sekunden");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(160);
+    this.setTooltip("Pausiert den Code für die angegebene Zeit (in Sekunden).");
+  }
+};
 Blockly.Blocks['custom_function_definition'] = {
   init: function() {
     this.appendDummyInput()
@@ -302,7 +315,8 @@ Blockly.Blocks['custom_function_definition'] = {
 Blockly.Blocks['custom_function_call'] = {
   init: function() {
     this.appendDummyInput()
-        .appendField("", "NAME_LABEL");
+        .appendField("Rufe Block auf:")
+        .appendField(new Blockly.FieldTextInput("mein_neuer_block"), "NAME_LABEL");
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour(200);
