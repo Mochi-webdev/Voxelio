@@ -485,69 +485,62 @@ window.App = {
         try { eval(executableCode); } catch (e) { console.error("Eval Fehler:", e); }
     },
 
-   stop() {
-    this.isRunning = false;
+    stop() {
+        this.isRunning = false;
 
-    // 1. UI & HUD aufräumen
-    Object.values(this.uiElements).forEach(el => el.remove());
-    this.uiElements = {};
-    const hud = document.getElementById('gameHUD');
-    if (hud) hud.innerHTML = "";
-    this.variableDisplays = {};
+        // 1. UI aufräumen
+        Object.values(this.uiElements).forEach(el => el.remove());
+        this.uiElements = {};
+        const hud = document.getElementById('gameHUD');
+        if (hud) hud.innerHTML = "";
 
-    // 2. Kamera retten
-    if (this.camera) {
-        if (this.camera.parent) this.camera.parent.remove(this.camera);
-        this.scene.add(this.camera);
-        this.camera.position.set(8, 8, 8);
-        this.camera.lookAt(0, 0, 0);
-    }
+        // 2. Kamera sichern (damit sie nicht mitgelöscht wird)
+        if (this.camera && this.camera.parent) {
+            this.camera.parent.remove(this.camera);
+            this.scene.add(this.camera);
+        }
 
-    // 3. SZENE REINIGEN (Sicherer Weg)
-    const toRemove = [];
-    this.scene.traverse((child) => {
-        if (child.isMesh || child.isGroup) {
-            // Boden, Kamera und Lichter ignorieren
-            if (child.name !== "mainFloor" && child !== this.floor && child !== this.camera && !child.isLight) {
-                toRemove.push(child);
+        // 3. Alle Objekte zum Löschen einsammeln
+        const toRemove = [];
+        this.scene.traverse((child) => {
+            if (child.isMesh || child.isGroup) {
+                // Wir löschen alles AUẞER Boden und Kamera
+                if (child !== this.floor && child !== this.camera && child.name !== "mainFloor") {
+                    toRemove.push(child);
+                }
             }
+        });
+
+        // 4. Objekte wirklich entfernen und Speicher freigeben
+        toRemove.forEach(obj => {
+            // Der universelle Fix für "removeFromParent is not a function":
+            if (obj.parent) {
+                obj.parent.remove(obj);
+            }
+
+            // Speicher (VRAM) freigeben, besonders wichtig bei vielen Klonen!
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                mats.forEach(m => {
+                    if (m.map) m.map.dispose();
+                    m.dispose();
+                });
+            }
+        });
+
+        // 5. Listen leeren
+        this.objects = {};
+        this.solids = [];
+        this.tickListeners = [];
+
+        // Controls zurücksetzen
+        if (this.controls) {
+            this.controls.enabled = true;
         }
-    });
 
-    toRemove.forEach(obj => {
-        // Geometrie und Material aus dem VRAM löschen
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-            const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-            materials.forEach(m => {
-                if (m.map) m.map.dispose();
-                m.dispose();
-            });
-        }
-
-        // Objekt vom Elternteil entfernen (funktioniert in allen Versionen)
-        if (obj.parent) {
-            obj.parent.remove(obj);
-        }
-    });
-
-    // 4. Referenzen zurücksetzen
-    this.objects = {};
-    this.solids = [];
-    this.keyListeners = {};
-    this.tickListeners = [];
-    this.variables = {};
-    this.fpcPlayer = null;
-
-    // 5. Steuerung wiederherstellen
-    if (this.controls) {
-        this.controls.enabled = true;
-        this.controls.update();
+        console.log("Cleanup fertig. Alle Klone sind weg.");
     }
-    if (document.pointerLockElement) document.exitPointerLock();
-
-    this.updateExplorer();
-}
 };
 
 window.UI = {
