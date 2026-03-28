@@ -543,31 +543,14 @@ window.App = {
 
         console.log("Cleanup fertig. Alle Klone sind weg.");
     },
-    toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        
-        const element = document.documentElement; 
-        if (element.requestFullscreen) {
-            element.requestFullscreen();
-        } else if (element.mozRequestFullScreen) { 
-            element.mozRequestFullScreen();
-        } else if (element.webkitRequestFullscreen) { 
-            element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) {
-            element.msRequestFullscreen();
-        }
-    } else {
-       
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-    }
+   toggleFullscreen() {
+    const canvasContainer = document.getElementById('fullscreen'); 
+    if (!canvasContainer) return;
+
+   
+    canvasContainer.classList.toggle('is-maximized');
+
+    this.onResize();
 }
 };
 

@@ -222,7 +222,20 @@ body {
     background: #fff;
     color: var(--text);
 }
-
+.toggleFullscreen-btn {
+    background: #eee;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-right: 1395px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: 0.2s;
+    background: #fff;
+    color: var(--text);
+}
 .run-btn, .run {
     background: #000000;
     color: var(--accent);
