@@ -488,37 +488,36 @@ window.App = {
     stop() {
         this.isRunning = false;
 
-        // 1. UI aufräumen
+      
         Object.values(this.uiElements).forEach(el => el.remove());
         this.uiElements = {};
         const hud = document.getElementById('gameHUD');
         if (hud) hud.innerHTML = "";
 
-        // 2. Kamera sichern (damit sie nicht mitgelöscht wird)
+        
         if (this.camera && this.camera.parent) {
             this.camera.parent.remove(this.camera);
             this.scene.add(this.camera);
         }
 
-        // 3. Alle Objekte zum Löschen einsammeln
         const toRemove = [];
         this.scene.traverse((child) => {
             if (child.isMesh || child.isGroup) {
-                // Wir löschen alles AUẞER Boden und Kamera
+                
                 if (child !== this.floor && child !== this.camera && child.name !== "mainFloor") {
                     toRemove.push(child);
                 }
             }
         });
 
-        // 4. Objekte wirklich entfernen und Speicher freigeben
+     
         toRemove.forEach(obj => {
-            // Der universelle Fix für "removeFromParent is not a function":
+            
             if (obj.parent) {
                 obj.parent.remove(obj);
             }
 
-            // Speicher (VRAM) freigeben, besonders wichtig bei vielen Klonen!
+            
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) {
                 const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -529,12 +528,14 @@ window.App = {
             }
         });
 
-        // 5. Listen leeren
+       
         this.objects = {};
         this.solids = [];
         this.tickListeners = [];
 
-        // Controls zurücksetzen
+        this.updateExplorer();
+
+        
         if (this.controls) {
             this.controls.enabled = true;
         }
