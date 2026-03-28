@@ -449,9 +449,14 @@ window.App = {
     onResize() {
         let c = document.getElementById('canvas3d');
         if (!c || !this.renderer) return;
-        this.camera.aspect = c.clientWidth / c.clientHeight;
+
+        // Nutze offsetWidth/Height für exakte Pixelmaße
+        const width = c.offsetWidth;
+        const height = c.offsetHeight;
+
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(c.clientWidth, c.clientHeight);
+        this.renderer.setSize(width, height);
     },
 
     updateExplorer() {
@@ -488,13 +493,13 @@ window.App = {
     stop() {
         this.isRunning = false;
 
-      
+
         Object.values(this.uiElements).forEach(el => el.remove());
         this.uiElements = {};
         const hud = document.getElementById('gameHUD');
         if (hud) hud.innerHTML = "";
 
-        
+
         if (this.camera && this.camera.parent) {
             this.camera.parent.remove(this.camera);
             this.scene.add(this.camera);
@@ -503,22 +508,22 @@ window.App = {
         const toRemove = [];
         this.scene.traverse((child) => {
             if (child.isMesh || child.isGroup) {
-                
+
                 if (child !== this.floor && child !== this.camera && child.name !== "mainFloor") {
                     toRemove.push(child);
                 }
             }
         });
-        
 
-     
+
+
         toRemove.forEach(obj => {
-            
+
             if (obj.parent) {
                 obj.parent.remove(obj);
             }
 
-            
+
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) {
                 const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -529,29 +534,33 @@ window.App = {
             }
         });
 
-       
+
         this.objects = {};
         this.solids = [];
         this.tickListeners = [];
 
         this.updateExplorer();
 
-        
+
         if (this.controls) {
             this.controls.enabled = true;
         }
 
         console.log("Cleanup fertig. Alle Klone sind weg.");
     },
-   toggleFullscreen() {
-    const canvasContainer = document.getElementById('fullscreen'); 
-    if (!canvasContainer) return;
+    toggleFullscreen() {
+        const sidePanel = document.getElementById('sidePanel');
+        if (!sidePanel) return;
 
-   
-    canvasContainer.classList.toggle('is-maximized');
+        // Klasse umschalten
+        sidePanel.classList.toggle('is-maximized');
 
-    this.onResize();
-}
+        // WICHTIG: Die Engine muss die neue Größe berechnen
+        // Wir nutzen setTimeout, damit das CSS erst greifen kann
+        setTimeout(() => {
+            this.onResize();
+        }, 10);
+    }
 };
 
 window.UI = {
