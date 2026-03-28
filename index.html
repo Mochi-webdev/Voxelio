@@ -163,7 +163,6 @@
             <block type="is_touching"></block>
             <block type="ui_button_pressed"></block>
             <block type="clone_object"></block>
-            <block type="wait_seconds"></block>
             <block type="custom_function_definition"></block>
             <block type="custom_function_call"></block>
         </category>
@@ -220,67 +219,48 @@
 
     // --- 1. TOOLBOX CALLBACK FUNKTION ---
     const myBlocksCallback = function(workspace) {
-        try {
-            const xmlList = [];
-            // Nur Blöcke auf der obersten Ebene scannen
-            const topBlocks = workspace.getTopBlocks(false);
-            const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
+        const xmlList = [];
+        // Nur Blöcke auf der obersten Ebene scannen
+        const topBlocks = workspace.getTopBlocks(false);
+        const definitions = topBlocks.filter(b => b.type === 'custom_function_definition');
 
-            definitions.forEach(defBlock => {
-                const name = defBlock.getFieldValue('NAME') || "Unbenannt";
-                const blockXml = Blockly.utils.xml.textToDom(
-                    `<block type="custom_function_call"><field name="NAME_LABEL">${name}</field></block>`
-                );
-                xmlList.push(blockXml);
-            });
-            return xmlList;
-        } catch(e) {
-            console.error("Fehler in myBlocksCallback:", e);
-            return [];
-        }
+        definitions.forEach(defBlock => {
+            const name = defBlock.getFieldValue('NAME') || "Unbenannt";
+            const blockXml = Blockly.utils.xml.textToDom(
+                `<block type="custom_function_call"><field name="NAME_LABEL">${name}</field></block>`
+            );
+            xmlList.push(blockXml);
+        });
+        return xmlList;
     };
 
     // --- 2. INITIALISIERUNG BEIM LADEN ---
-    window.addEventListener('DOMContentLoaded', () => {
-        // Warte kurz, bis alle Blockly-Skripte geladen sind
-        setTimeout(() => {
-            const params = new URLSearchParams(window.location.search);
-            activeProjectName = params.get('project');
-            const isProjectNew = params.get('new') === 'true';
-            const projectOwner = params.get('owner');
+    window.addEventListener('load', () => {
+        const params = new URLSearchParams(window.location.search);
+        activeProjectName = params.get('project');
+        const isProjectNew = params.get('new') === 'true';
+        const projectOwner = params.get('owner');
 
-            if (!activeProjectName) {
-                window.location.href = 'dashboard.html';
-                return;
-            }
+        if (!activeProjectName) {
+            window.location.href = 'dashboard.html';
+            return;
+        }
 
-            document.getElementById('currentProjectDisplay').innerText = activeProjectName;
+        document.getElementById('currentProjectDisplay').innerText = activeProjectName;
 
-            // WICHTIG: Callback MUSS vor Workspace-Erstellung registriert werden
-            if (Blockly && typeof Blockly.defineBlocksWithJsonArray === 'function') {
-                // Blockly ist geladen
-            } else {
-                console.error("Blockly nicht korrekt geladen!");
-                return;
-            }
+        // WORKSPACE ERSTELLEN
+        window.workspace = Blockly.inject('blocklyDiv', {
+            toolbox: document.getElementById('toolbox'),
+            zoom: { controls: true, wheel: true, startScale: 1.0 }
+        });
 
-            // WORKSPACE ERSTELLEN (OHNE toolbox initially!)
-            window.workspace = Blockly.inject('blocklyDiv', {
-                zoom: { controls: true, wheel: true, startScale: 1.0 }
-            });
+        // WICHTIG: Sofort registrieren! 
+        // Die ID 'MY_FUNCTIONS' muss EXAKT mit dem custom-Attribut im XML übereinstimmen.
+        window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', myBlocksCallback);
 
-            // CALLBACK registrieren BEVOR getToolbox() verwendet wird
-            window.workspace.registerToolboxCategoryCallback('MY_FUNCTIONS', myBlocksCallback);
-
-            // Jetzt Toolbox setzen
-            const toolboxXml = document.getElementById('toolbox');
-            if (toolboxXml) {
-                window.workspace.updateToolbox(toolboxXml);
-            }
-
-            // --- 3. CHANGE LISTENER (AUTOSAVE & REFRESH) ---
-            let toolboxUpdateTimer = null;
-            window.workspace.addChangeListener((e) => {
+        // --- 3. CHANGE LISTENER (AUTOSAVE & REFRESH) ---
+        let toolboxUpdateTimer = null;
+        window.workspace.addChangeListener((e) => {
             if (e.isUiEvent) return;
             hasChanges = true;
 
@@ -317,10 +297,9 @@
                 startGlobalAutosave();
             }
         }, 500);
-        }, 500);
     });
 
-    async function saveCurrent(isSilent = false) {
+        async function saveCurrent(isSilent = false) {
             if (!activeProjectName || !window.workspace) return;
             Editor.scripts[Editor.currentScript] = Blockly.serialization.workspaces.save(window.workspace);
             
@@ -345,4 +324,3 @@
     </script>
 </body>
 </html>
-
