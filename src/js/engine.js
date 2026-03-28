@@ -483,70 +483,88 @@ window.App = {
     registerKeyEvent(k, f) { this.keyListeners[k.toLowerCase()] = f; },
 
     run() {
-        this.stop();
+        console.log("Engine startet...");
+        this.stop(); // Vorher alles sauber machen
         this.isRunning = true;
-        const rawCode = Editor.getAllCode();
-        const executableCode = `(async () => { try { ${rawCode} } catch (e) { console.error("Skriptfehler:", e); } })();`;
-        try { eval(executableCode); } catch (e) { console.error("Eval Fehler:", e); }
+
+        // UI Feedback: Status Tag ändern
+        const statusTag = document.getElementById('statusTag');
+        if (statusTag) {
+            statusTag.innerText = "RUNNING";
+            statusTag.style.background = "#4CFF00";
+            statusTag.style.color = "#000";
+        }
+
+        const rawCode = window.Editor.getAllCode();
+        // Verpacke den Code in eine async function, damit 'await' (z.B. wait_seconds) funktioniert
+        const executableCode = `(async () => { 
+        try { 
+            ${rawCode} 
+        } catch (e) { 
+            console.error("Skriptfehler im Spiel:", e); 
+        } 
+    })();`;
+
+        try {
+            eval(executableCode);
+        } catch (e) {
+            console.error("Kritischer Fehler beim Starten:", e);
+        }
     },
 
     stop() {
         this.isRunning = false;
 
+        const statusTag = document.getElementById('statusTag');
+        if (statusTag) {
+            statusTag.innerText = "System Bereit";
+            statusTag.style.background = "";
+            statusTag.style.color = "";
+        }
 
+        // Pointer Lock lösen, falls aktiv
+        document.exitPointerLock?.();
+
+        // UI Elemente entfernen
         Object.values(this.uiElements).forEach(el => el.remove());
         this.uiElements = {};
         const hud = document.getElementById('gameHUD');
-        if (hud) hud.innerHTML = "";
-
-
-        if (this.camera && this.camera.parent) {
-            this.camera.parent.remove(this.camera);
-            this.scene.add(this.camera);
+        if (hud) {
+            hud.style.display = 'none';
+            hud.innerHTML = "";
         }
 
-        const toRemove = [];
-        this.scene.traverse((child) => {
-            if (child.isMesh || child.isGroup) {
+        // Kamera reset
+        if (this.camera) {
+            this.scene.attach(this.camera);
+            this.camera.position.set(8, 8, 8);
+            this.camera.rotation.set(0, 0, 0);
+            this.camera.lookAt(0, 0, 0);
+        }
 
-                if (child !== this.floor && child !== this.camera && child.name !== "mainFloor") {
-                    toRemove.push(child);
-                }
-            }
-        });
-
-
-
-        toRemove.forEach(obj => {
-
-            if (obj.parent) {
-                obj.parent.remove(obj);
-            }
-
-
+        // 3D Objekte entfernen
+        Object.keys(this.objects).forEach(name => {
+            const obj = this.objects[name];
+            this.scene.remove(obj);
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) {
-                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-                mats.forEach(m => {
-                    if (m.map) m.map.dispose();
-                    m.dispose();
-                });
+                if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                else obj.material.dispose();
             }
         });
-
 
         this.objects = {};
         this.solids = [];
         this.tickListeners = [];
+        this.keyListeners = {};
+        this.variables = {};
 
         this.updateExplorer();
-
 
         if (this.controls) {
             this.controls.enabled = true;
         }
-
-        console.log("Cleanup fertig. Alle Klone sind weg.");
+        console.log("Engine gestoppt.");
     },
     toggleFullscreen(isMaximized) {
         const sidePanel = document.getElementById('sidePanel');
@@ -604,3 +622,23 @@ window.UI = {
 };
 
 window.addEventListener('load', () => App.init());
+window.switchTab = function (tab) {
+    const logicTab = document.getElementById('blocklyArea');
+    const textureTab = document.getElementById('textureEditor');
+    const btnLogic = document.getElementById('btn-logic');
+    const btnTexture = document.getElementById('btn-texture');
+
+    if (tab === 'logic') {
+        logicTab.style.display = 'block';
+        textureTab.style.display = 'none';
+        btnLogic.classList.add('active');
+        btnTexture.classList.remove('active');
+        // Blockly muss wissen, dass sich die Größe geändert haben könnte
+        if (window.workspace) Blockly.svgResize(window.workspace);
+    } else {
+        logicTab.style.display = 'none';
+        textureTab.style.display = 'block';
+        btnLogic.classList.remove('active');
+        btnTexture.classList.add('active');
+    }
+};
