@@ -1,7 +1,7 @@
 # Voxelio
 
-Hier sind alle files zu meinem zweiten versuch eine 3d Engine zu entwickeln
+Hier sind alle files zu meinem zweiten versuch eine 3d Engine zu entwickeln. Dies ist das Ofizielle Repo für Voxelio. 
 
-#License
+License
 
 Licensed under MIT
