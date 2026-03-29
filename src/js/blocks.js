@@ -389,10 +389,9 @@ Blockly.Blocks['custom_function_call'] = {
         this.setNextStatement(true, null);
         this.setColour(200);
     },
-    // Hilfsfunktion um den Namen zu setzen
+    // This is called by your toolbox callback
     setFunctionName: function (name) {
         this.setFieldValue(name, "NAME_LABEL");
-        this.functionName = name;
     }
 };
 
@@ -622,13 +621,14 @@ GC.forBlock['custom_function_definition'] = function (block, generator) {
     ${branch} 
   };\n`;
 };
-// Generator für den Aufruf-Block
 GC.forBlock['custom_function_call'] = function (block, generator) {
-    const funcName = block.getFieldValue('NAME_LABEL').replace(/[^a-zA-Z0-9]/g, '_');
-    return `if(window.func_${funcName}) await window.func_${funcName}();\n`;
+    // 1. Sanitize the name exactly like the definition block does
+    const rawName = block.getFieldValue('NAME_LABEL') || "unnamed";
+    const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    // 2. Return the code string (Note: removing await for stability)
+    return `if (typeof window["func_${funcName}"] === "function") {\n  window["func_${funcName}"]();\n}\n`;
 };
-
-
 
 
 
