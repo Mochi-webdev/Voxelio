@@ -612,25 +612,24 @@ GC.forBlock['wait_seconds'] = function (block, generator) {
     // WICHTIG: Das await sorgt dafür, dass die Engine pausiert
     return `await new Promise(resolve => setTimeout(resolve, ${seconds} * 1000));\n`;
 };
-GC.forBlock['custom_function_definition'] = function (block, generator) {
-    const funcName = block.getFieldValue('NAME').replace(/[^a-zA-Z0-9]/g, '_');
-    const branch = generator.statementToCode(block, 'STACK');
-    // Wir definieren die Funktion global, damit sie von überall aufrufbar ist
-    return `window.func_${funcName} = async function() { 
-    ${branch} 
-  };\n`;
-};
-GC.forBlock['custom_function_definition'] = function (block, generator) {
+GC.forBlock['custom_function_definition'] = function(block) {
     const rawName = block.getFieldValue('NAME') || "unnamed";
     const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
-    const branch = generator.statementToCode(block, 'STACK');
-
-    // This creates a global function that any Call block can see
-    return `window["func_${funcName}"] = () => {\n${branch}};\n`;
+    const branch = GC.statementToCode(block, 'STACK');
+    
+    // This creates the function on the window so the 'Call' block can find it
+    return `window["func_${funcName}"] = function() {\n${branch}};\n`;
+};
+GC['custom_function_call'] = function(block) {
+    const rawName = block.getFieldValue('NAME_LABEL') || "unnamed";
+    const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    // We return a string. Note: No 'await' here yet to prevent syntax crashes.
+    return `if (typeof window["func_${funcName}"] === "function") {\n  window["func_${funcName}"]();\n}\n`;
 };
 
-
-
+// Also do it the standard way just to be sure
+GC.forBlock['custom_function_call'] = GC['custom_function_call'];
 
 
 
