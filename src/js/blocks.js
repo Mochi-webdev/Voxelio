@@ -620,16 +620,14 @@ GC.forBlock['custom_function_definition'] = function (block, generator) {
     ${branch} 
   };\n`;
 };
-GC.forBlock['custom_function_call'] = function (block, generator) {
-    // Get the name and clean it EXACTLY like the definition does
-    const rawName = block.getFieldValue('NAME_LABEL') || "unnamed";
+GC.forBlock['custom_function_definition'] = function (block, generator) {
+    const rawName = block.getFieldValue('NAME') || "unnamed";
     const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
-    
-    // Check if it exists before calling to prevent "is not a function" errors
-    return `if (typeof window["func_${funcName}"] === "function") {\n  window["func_${funcName}"]();\n}\n`;
+    const branch = generator.statementToCode(block, 'STACK');
+
+    // This creates a global function that any Call block can see
+    return `window["func_${funcName}"] = () => {\n${branch}};\n`;
 };
-
-
 
 
 
