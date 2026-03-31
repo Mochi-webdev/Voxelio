@@ -859,7 +859,7 @@ App.updateExplorer = function() {
         
         // Icon basierend auf Typ (optional)
         let icon = depth === 0 ? "🟦 " : "┕ ";
-        item.innerHTML = `<span style="color: #eee;">${icon}${obj.name}</span>`;
+        item.innerHTML = `<span style="color: #858585;">${icon}${obj.name}</span>`;
         container.appendChild(item);
 
         if (obj.children) {
