@@ -697,7 +697,7 @@ App.createParticleMaterial = function (color, size, textureData = null) {
     return material;
 };
 
-App.createParticleSystem = function(id, attachToObjName, type, color) {
+App.createParticleSystem = function (id, attachToObjName, type, color) {
     if (this.particleSystems[id]) this.removeParticleSystem(id);
 
     const attachToObject = this.objects[attachToObjName];
@@ -754,12 +754,12 @@ App.createParticleSystem = function(id, attachToObjName, type, color) {
 
         for (let i = 0; i < posArr.length; i += 3) {
             posArr[i] += velArr[i];
-            posArr[i+1] += velArr[i+1];
-            posArr[i+2] += velArr[i+2];
+            posArr[i + 1] += velArr[i + 1];
+            posArr[i + 2] += velArr[i + 2];
 
             // Reset-Logik je nach Typ
-            if (type !== "explosion" && Math.abs(posArr[i+1]) > 2) {
-                posArr[i] = 0; posArr[i+1] = 0; posArr[i+2] = 0;
+            if (type !== "explosion" && Math.abs(posArr[i + 1]) > 2) {
+                posArr[i] = 0; posArr[i + 1] = 0; posArr[i + 2] = 0;
             }
         }
         system.geometry.attributes.position.needsUpdate = true;
@@ -794,7 +794,7 @@ App.removeParticleSystem = function (id) {
         console.log(`Partikelsystem ${id} entfernt.`);
     }
 };
-App.setObjectParent = function(childName, parentName) {
+App.setObjectParent = function (childName, parentName) {
     const child = this.objects[childName];
     const parent = this.objects[parentName];
 
@@ -807,7 +807,7 @@ App.setObjectParent = function(childName, parentName) {
 };
 App.tweens = [];
 
-App.tweenSize = function(id, targetScale, duration, ease) {
+App.tweenSize = function (id, targetScale, duration, ease) {
     const obj = this.objects[id] || this.uiElements[id];
     if (!obj) return;
 
@@ -823,7 +823,7 @@ App.tweenSize = function(id, targetScale, duration, ease) {
         if (ease === "bounce") progress = 1 - Math.pow(1 - progress, 3) * Math.abs(Math.cos(progress * Math.PI * 3));
 
         const currentScale = startScale + (targetScale - startScale) * progress;
-        
+
         if (obj.scale && obj.scale.set) { // 3D Objekt
             obj.scale.set(currentScale, currentScale, currentScale);
         } else { // UI Element
@@ -837,12 +837,16 @@ App.tweenSize = function(id, targetScale, duration, ease) {
 
     this.tickListeners.push(tweenUpdate);
 };
-App.updateExplorer = function() {
+App.updateExplorer = function () {
     // Wir versuchen beide möglichen IDs zu finden (für maximale Kompatibilität mit deinem HTML)
     const container = document.getElementById('explorer-list') || document.getElementById('sceneList');
-    
-    if (!container) return; // Falls keins von beiden existiert, einfach abbrechen
 
+    if (!container) return; // Falls keins von beiden existiert, einfach abbrechen
+    // Styling direkt via JS für Scrollbarkeit
+    container.style.maxHeight = "400px";
+    container.style.overflowY = "auto";
+    container.style.overflowX = "hidden";
+    container.style.display = "block"; // Sicherstellen, dass es kein Flex-Layout stört
     container.innerHTML = ""; // Leeren
 
     // 1. HEADER FÜR 3D OBJEKTE
@@ -856,7 +860,7 @@ App.updateExplorer = function() {
         item.className = "scene-item";
         item.style.paddingLeft = (depth * 15 + 5) + "px";
         item.style.cursor = "default";
-        
+
         // Icon basierend auf Typ (optional)
         let icon = depth === 0 ? "🟦 " : "┕ ";
         item.innerHTML = `<span style="color: #858585;">${icon}${obj.name}</span>`;
