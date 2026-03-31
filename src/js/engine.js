@@ -794,7 +794,72 @@ App.removeParticleSystem = function (id) {
         console.log(`Partikelsystem ${id} entfernt.`);
     }
 };
+App.setObjectParent = function(childName, parentName) {
+    const child = this.objects[childName];
+    const parent = this.objects[parentName];
 
+    if (child && parent) {
+        // Fügt das Kind dem Parent in der Three.js Szene hinzu
+        parent.add(child);
+        console.log(`${childName} ist jetzt ein Kind von ${parentName}`);
+        this.updateExplorer(); // WICHTIG: Explorer aktualisieren für die Darstellung
+    }
+};
+App.tweens = [];
+
+App.tweenSize = function(id, targetScale, duration, ease) {
+    const obj = this.objects[id] || this.uiElements[id];
+    if (!obj) return;
+
+    const startScale = obj.scale ? obj.scale.x : 1; // Für 3D oder UI
+    const startTime = Date.now();
+
+    const tweenUpdate = () => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        let progress = Math.min(elapsed / duration, 1);
+
+        // Easing Funktionen
+        if (ease === "smooth") progress = progress * progress * (3 - 2 * progress);
+        if (ease === "bounce") progress = 1 - Math.pow(1 - progress, 3) * Math.abs(Math.cos(progress * Math.PI * 3));
+
+        const currentScale = startScale + (targetScale - startScale) * progress;
+        
+        if (obj.scale && obj.scale.set) { // 3D Objekt
+            obj.scale.set(currentScale, currentScale, currentScale);
+        } else { // UI Element
+            obj.style.transform = `scale(${currentScale})`;
+        }
+
+        if (progress >= 1) {
+            this.tickListeners = this.tickListeners.filter(f => f !== tweenUpdate);
+        }
+    };
+
+    this.tickListeners.push(tweenUpdate);
+};
+App.updateExplorer = function() {
+    const container = document.getElementById('explorer-list');
+    container.innerHTML = ""; // Leeren
+
+    const renderTree = (obj, depth = 0) => {
+        const item = document.createElement('div');
+        item.style.paddingLeft = (depth * 15) + "px"; // Einrückung pro Ebene
+        item.innerHTML = (depth > 0 ? "┕ " : "") + obj.name;
+        container.appendChild(item);
+
+        // Falls das Objekt Kinder hat (Three.js Struktur)
+        if (obj.children) {
+            obj.children.forEach(child => {
+                if (child.type !== "Sprite") renderTree(child, depth + 1);
+            });
+        }
+    };
+
+    // Starte mit allen Objekten, die keinen Parent haben (direkt in der Szene)
+    Object.values(this.objects).forEach(obj => {
+        if (obj.parent === this.scene) renderTree(obj);
+    });
+};
 window.UI = {
     async loadFromCloud(projectName) {
         const urlParams = new URLSearchParams(window.location.search);

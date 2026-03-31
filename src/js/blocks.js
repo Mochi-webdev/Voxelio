@@ -480,6 +480,50 @@ Blockly.Blocks['vfx_remove_particles'] = {
         this.setTooltip("Stoppt und löscht ein Partikelsystem.");
     }
 };
+Blockly.Blocks['logic_set_parent'] = {
+    init: function () {
+        this.appendDummyInput()
+            .appendField("Setze Parent von:")
+            .appendField(new Blockly.FieldTextInput("KindObjekt"), "CHILD");
+        this.appendDummyInput()
+            .appendField("auf Parent:")
+            .appendField(new Blockly.FieldTextInput("ParentObjekt"), "PARENT");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(120);
+        this.setTooltip("Bindet ein Objekt an ein anderes. Das Kind bewegt sich mit dem Parent mit.");
+    }
+};
+Blockly.Blocks['vfx_tween_size'] = {
+    init: function () {
+        this.appendDummyInput()
+            .appendField("Tween Größe von:")
+            .appendField(new Blockly.FieldTextInput("ObjektID"), "ID");
+        this.appendDummyInput()
+            .appendField("Zielgröße:")
+            .appendField(new Blockly.FieldNumber(2, 0.1), "SCALE");
+        this.appendDummyInput()
+            .appendField("Dauer (sek):")
+            .appendField(new Blockly.FieldNumber(1, 0.1), "DURATION");
+        this.appendDummyInput()
+            .appendField("Stil:")
+            .appendField(new Blockly.FieldDropdown([
+                ["Linear", "linear"],
+                ["Smooth (Ease)", "smooth"],
+                ["Bounce", "bounce"]
+            ]), "EASE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+    }
+};
+
+
+
+
+
+
+
 
 // --- GENERATORS CONFIG ---
 // Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
@@ -754,8 +798,20 @@ GC.forBlock['vfx_remove_particles'] = function(block) {
     return `App.removeParticleSystem("${id}");\n`;
 };
 
+GC.forBlock['logic_set_parent'] = function(block) {
+    const child = block.getFieldValue('CHILD');
+    const parent = block.getFieldValue('PARENT');
 
+    return `App.setObjectParent("${child}", "${parent}");\n`;
+};
+GC.forBlock['vfx_tween_size'] = function(block) {
+    const id = block.getFieldValue('ID');
+    const scale = block.getFieldValue('SCALE');
+    const duration = block.getFieldValue('DURATION');
+    const ease = block.getFieldValue('EASE');
 
+    return `App.tweenSize("${id}", ${scale}, ${duration}, "${ease}");\n`;
+};
 
 
 
