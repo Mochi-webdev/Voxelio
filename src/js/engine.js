@@ -293,6 +293,12 @@ window.App = {
         if (this.uiElements[id]) this.uiElements[id].remove();
         const el = document.createElement(type === 'button' ? 'button' : 'div');
         el.id = id;
+        
+        // KORREKTUR: Parent-ID im DOM Element speichern
+        if (parentId) {
+            el.dataset.parent = parentId;
+        }
+
         Object.assign(el.style, {
             position: "absolute", left: x + "px", top: y + "px", width: w + "px", height: h + "px",
             zIndex: "100", display: "flex", alignItems: "center", justifyContent: "center",
@@ -592,42 +598,42 @@ window.App = {
         }, 50);
     }
 };
+
+// KORREKTUR: Greift jetzt auf das HTML Element direkt zu
 App.updateUIPosition = function(id, x, y, w, h) {
     const ui = App.uiElements[id];
-    if (ui && ui.element) {
-        // Interne Daten aktualisieren
-        ui.x = x;
-        ui.y = y;
-        ui.w = w;
-        ui.h = h;
-
+    if (ui) {
         // Das tatsächliche HTML/CSS Element auf dem Bildschirm verschieben
-        ui.element.style.left = x + "px";
-        ui.element.style.top = y + "px";
-        ui.element.style.width = w + "px";
-        ui.element.style.height = h + "px";
+        ui.style.left = x + "px";
+        ui.style.top = y + "px";
+        ui.style.width = w + "px";
+        ui.style.height = h + "px";
         
         console.log(`UI ${id} wurde auf Pos ${x},${y} verschoben.`);
     } else {
         console.warn(`Konnte Position für ${id} nicht aktualisieren: Element nicht gefunden.`);
     }
 };
+
+// KORREKTUR: Dataset statt property
 App.setUIParent = function (childId, parentId) {
     const child = App.uiElements[childId];
     if (child) {
-        child.parent = parentId;
-        // Falls du ein Grid-Layout nutzt, sollte es hier neu berechnet werden:
+        child.dataset.parent = parentId;
+        // Falls du ein Grid-Layout nutzt, sollte es hier neu berechnet werden
         if (App.applyGridLayout) {
             App.applyGridLayout(parentId);
         }
         console.log(`UI ${childId} wurde nach ${parentId} verschoben.`);
     }
 };
+
+// KORREKTUR: Filtert nach dataset.parent und übergibt die ID richtig an updateUIPosition
 App.applyGridLayout = function (parentId, cols, gap, cellW, cellH) {
     // Hole alle UI-Elemente, die diesen Parent haben
-    const children = Object.values(App.uiElements).filter(ui => ui.parent === parentId);
+    const children = Object.values(App.uiElements).filter(el => el.dataset.parent === parentId);
 
-    children.forEach((ui, index) => {
+    children.forEach((el, index) => {
         const row = Math.floor(index / cols);
         const col = index % cols;
 
@@ -635,9 +641,10 @@ App.applyGridLayout = function (parentId, cols, gap, cellW, cellH) {
         const newY = row * (cellH + gap);
 
         // Aktualisiere die Position des UI-Elements im System
-        App.updateUIPosition(ui.id, newX, newY, cellW, cellH);
+        App.updateUIPosition(el.id, newX, newY, cellW, cellH);
     });
 };
+
 window.UI = {
     async loadFromCloud(projectName) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -667,6 +674,7 @@ window.UI = {
 };
 
 window.addEventListener('load', () => App.init());
+
 window.switchTab = function (tab) {
     const logicTab = document.getElementById('blocklyArea');
     const textureTab = document.getElementById('textureEditor');
