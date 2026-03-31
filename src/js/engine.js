@@ -863,7 +863,7 @@ App.updateExplorer = function() {
         }
 
         item.innerHTML = `<span style="margin-right: 5px; font-size: 10px;">${icon}</span>
-                          <span style="color: #eee;">${obj.name}</span>`;
+                          <span style="color: #464646;">${obj.name}</span>`;
 
         // Klick-Event zum Ein-/Ausklappen
         if (hasChildren) {
