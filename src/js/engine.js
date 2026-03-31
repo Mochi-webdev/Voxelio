@@ -592,6 +592,26 @@ window.App = {
         }, 50);
     }
 };
+App.updateUIPosition = function(id, x, y, w, h) {
+    const ui = App.uiElements[id];
+    if (ui && ui.element) {
+        // Interne Daten aktualisieren
+        ui.x = x;
+        ui.y = y;
+        ui.w = w;
+        ui.h = h;
+
+        // Das tatsächliche HTML/CSS Element auf dem Bildschirm verschieben
+        ui.element.style.left = x + "px";
+        ui.element.style.top = y + "px";
+        ui.element.style.width = w + "px";
+        ui.element.style.height = h + "px";
+        
+        console.log(`UI ${id} wurde auf Pos ${x},${y} verschoben.`);
+    } else {
+        console.warn(`Konnte Position für ${id} nicht aktualisieren: Element nicht gefunden.`);
+    }
+};
 App.setUIParent = function (childId, parentId) {
     const child = App.uiElements[childId];
     if (child) {
