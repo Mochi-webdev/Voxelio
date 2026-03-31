@@ -515,7 +515,7 @@ body {
     user-select: none; /* Text markieren verhindern beim Klicken */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 13px;
-    color: #ccc;
+    color: #525252;
 }
 
 .scene-item:hover {
