@@ -83,6 +83,7 @@ window.App = {
     textures: {},
     variables: {},
     keyListeners: {},
+    particleSystems: {},
     tickListeners: [],
     solids: [],
     variableDisplays: {},
@@ -289,12 +290,12 @@ window.App = {
         return box1.intersectsBox(box2);
     },
 
-   createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
+    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
         if (this.uiElements[id]) this.uiElements[id].remove();
-        
+
         const el = document.createElement(type === 'button' ? 'button' : 'div');
         el.id = id;
-        
+
         // WICHTIG: Parent-Referenz speichern
         if (parentId) el.dataset.parent = parentId;
 
@@ -316,7 +317,7 @@ window.App = {
 
         // Frame-Logik: Muss Kinder-Koordinaten "fangen"
         if (type === 'frame' || type === 'scrolling_frame') {
-            el.style.display = "block"; 
+            el.style.display = "block";
             el.style.overflow = (type === 'scrolling_frame') ? "auto" : "hidden";
             // 'pointer-events: auto' sorgt dafür, dass Klicks nicht durch das Panel gehen
             el.style.pointerEvents = "auto";
@@ -342,15 +343,15 @@ window.App = {
         }
 
         // --- Korrektes Appending ---
-        let target = (parentId && this.uiElements[parentId]) 
-                     ? this.uiElements[parentId] 
-                     : document.getElementById('canvas3d');
+        let target = (parentId && this.uiElements[parentId])
+            ? this.uiElements[parentId]
+            : document.getElementById('canvas3d');
 
         if (target) {
             target.appendChild(el);
             this.uiElements[id] = el;
         }
-        
+
         this.updateExplorer();
     },
 
@@ -589,6 +590,10 @@ window.App = {
         this.variables = {};
 
         this.updateExplorer();
+        Object.keys(this.particleSystems).forEach(id => {
+            this.removeParticleSystem(id);
+        });
+        this.particleSystems = {};
 
         if (this.controls) {
             this.controls.enabled = true;
@@ -622,7 +627,7 @@ window.App = {
     }
 };
 
-App.updateUIPosition = function(id, x, y, w, h) {
+App.updateUIPosition = function (id, x, y, w, h) {
     const el = App.uiElements[id];
     if (el) {
         el.style.left = x + "px";
@@ -658,7 +663,7 @@ App.applyGridLayout = function (parentId, cols, gap, cellW, cellH) {
         App.updateUIPosition(el.id, newX, newY, cellW, cellH);
     });
 };
-App.setUIGradient = function(id, color1, color2, direction) {
+App.setUIGradient = function (id, color1, color2, direction) {
     const el = this.uiElements[id];
     if (el) {
         // CSS linear-gradient akzeptiert Hex-Codes und Namen direkt
@@ -666,6 +671,134 @@ App.setUIGradient = function(id, color1, color2, direction) {
         el.style.backgroundColor = "transparent";
     }
 };
+App.createParticleMaterial = function (color, size, textureData = null) {
+    let material;
+    if (textureData) {
+        // Wenn eine Textur angegeben ist, laden wir sie
+        const texture = new THREE.TextureLoader().load(textureData);
+        material = new THREE.PointsMaterial({
+            size: size,
+            map: texture,
+            blending: THREE.AdditiveBlending, // Für leuchtende Partikel
+            transparent: true,
+            depthWrite: false, // Sorgt dafür, dass Partikel immer sichtbar sind
+            color: color
+        });
+    } else {
+        // Ohne Textur verwenden wir eine einfache Farbe
+        material = new THREE.PointsMaterial({
+            color: color,
+            size: size,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+    }
+    return material;
+};
+
+// Funktion zum Erstellen eines Partikelsystems
+App.createParticleSystem = function (id, attachToObjName, particleCount, color, size, textureName = null, spread = 0.5) {
+    if (this.particleSystems[id]) {
+        this.removeParticleSystem(id); // Altes System entfernen
+    }
+
+    const attachToObject = this.objects[attachToObjName];
+    if (!attachToObject) {
+        console.warn(`Partikelsystem ${id}: Objekt ${attachToObjName} zum Anheften nicht gefunden.`);
+        return;
+    }
+
+    const particlesGeometry = new THREE.BufferGeometry();
+    const positions = [];
+    const velocities = []; // Optional: für Partikelbewegung
+
+    for (let i = 0; i < particleCount; i++) {
+        // Initialposition relativ zum Objekt mit etwas Streuung
+        positions.push(
+            (Math.random() - 0.5) * spread,
+            (Math.random() - 0.5) * spread,
+            (Math.random() - 0.5) * spread
+        );
+        // Beispiel: leichte Aufwärtsbewegung und Zufallsdrift
+        velocities.push(
+            (Math.random() - 0.5) * 0.01,
+            Math.random() * 0.03 + 0.01, // Nach oben steigen
+            (Math.random() - 0.5) * 0.01
+        );
+    }
+
+    particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    particlesGeometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3)); // Speichere Geschwindigkeiten
+
+    const textureData = textureName && this.textures[textureName] ? this.textures[textureName] : null;
+    const particlesMaterial = this.createParticleMaterial(color, size, textureData);
+
+    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+    particleSystem.name = id;
+
+    // Partikelsystem dem 3D-Objekt als Kind hinzufügen
+    attachToObject.add(particleSystem);
+    this.particleSystems[id] = particleSystem;
+
+    // Füge einen Tick-Listener hinzu, um Partikel zu aktualisieren
+    const updateParticles = () => {
+        const pGeo = particleSystem.geometry;
+        const positions = pGeo.attributes.position.array;
+        const velocities = pGeo.attributes.velocity.array;
+
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i] += velocities[i];     // x
+            positions[i + 1] += velocities[i + 1]; // y (Partikel steigen auf)
+            positions[i + 2] += velocities[i + 2]; // z
+
+            // Beispiel: Partikel resetten, wenn sie zu hoch fliegen
+            if (positions[i + 1] > spread * 2) {
+                positions[i] = (Math.random() - 0.5) * spread;
+                positions[i + 1] = (Math.random() - 0.5) * spread;
+                positions[i + 2] = (Math.random() - 0.5) * spread;
+
+                // Neue leichte Aufwärtsbewegung
+                velocities[i] = (Math.random() - 0.5) * 0.01;
+                velocities[i + 1] = Math.random() * 0.03 + 0.01;
+                velocities[i + 2] = (Math.random() - 0.5) * 0.01;
+            }
+        }
+        pGeo.attributes.position.needsUpdate = true;
+    };
+    this.tickListeners.push(updateParticles); // Jede Frame aktualisieren
+    particleSystem.userData.tickFunction = updateParticles; // Referenz speichern zum Entfernen
+
+    this.updateExplorer();
+    console.log(`Partikelsystem ${id} an Objekt ${attachToObjName} erstellt.`);
+};
+
+// Funktion zum Entfernen eines Partikelsystems
+App.removeParticleSystem = function (id) {
+    const ps = this.particleSystems[id];
+    if (ps) {
+        // Parent finden und Partikelsystem daraus entfernen
+        if (ps.parent) {
+            ps.parent.remove(ps);
+        } else {
+            this.scene.remove(ps); // Falls es nicht an ein Objekt angeheftet war
+        }
+
+        // Tick-Funktion entfernen
+        if (ps.userData.tickFunction) {
+            this.tickListeners = this.tickListeners.filter(func => func !== ps.userData.tickFunction);
+        }
+
+        // Geometrie und Material freigeben
+        ps.geometry.dispose();
+        ps.material.dispose();
+
+        delete this.particleSystems[id];
+        this.updateExplorer();
+        console.log(`Partikelsystem ${id} entfernt.`);
+    }
+};
+
 window.UI = {
     async loadFromCloud(projectName) {
         const urlParams = new URLSearchParams(window.location.search);

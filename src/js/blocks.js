@@ -442,7 +442,43 @@ Blockly.Blocks['ui_set_gradient'] = {
         this.setHelpUrl("");
     }
 };
+Blockly.Blocks['vfx_particle_system'] = {
+    init: function () {
+        this.appendDummyInput()
+            .appendField("Partikel Effekt:")
+            .appendField(new Blockly.FieldTextInput("fire_fx"), "ID");
+        this.appendDummyInput()
+            .appendField("Anheften an Objekt:")
+            .appendField(new Blockly.FieldTextInput("Cube1"), "TARGET");
+        this.appendDummyInput()
+            .appendField("Anzahl:")
+            .appendField(new Blockly.FieldNumber(100, 1, 5000), "COUNT")
+            .appendField("Größe:")
+            .appendField(new Blockly.FieldNumber(0.1, 0.01, 5), "SIZE");
+        this.appendDummyInput()
+            .appendField("Farbe (Hex):")
+            .appendField(new Blockly.FieldTextInput("#ff5500"), "COLOR")
+            .appendField("Streuung:")
+            .appendField(new Blockly.FieldNumber(0.5, 0.1, 10), "SPREAD");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(280);
+        this.setTooltip("Erstellt Partikel, die an einem 3D-Objekt haften und aufsteigen.");
+        this.setHelpUrl("");
+    }
+};
 
+Blockly.Blocks['vfx_remove_particles'] = {
+    init: function () {
+        this.appendDummyInput()
+            .appendField("Entferne Partikel:")
+            .appendField(new Blockly.FieldTextInput("fire_fx"), "ID");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(280);
+        this.setTooltip("Stoppt und löscht ein Partikelsystem.");
+    }
+};
 
 // --- GENERATORS CONFIG ---
 // Erkennt automatisch, ob die neue (javascriptGenerator) oder alte (Blockly.JavaScript) API genutzt wird.
@@ -702,7 +738,22 @@ GC.forBlock['ui_set_gradient'] = function(block) {
     return `App.setUIGradient("${id}", "${col1}", "${col2}", "${dir}");\n`;
 };
 
+GC.forBlock['vfx_particle_system'] = function(block) {
+    const id = block.getFieldValue('ID');
+    const target = block.getFieldValue('TARGET');
+    const count = block.getFieldValue('COUNT');
+    const size = block.getFieldValue('SIZE');
+    const color = block.getFieldValue('COLOR');
+    const spread = block.getFieldValue('SPREAD');
 
+    // Wir übergeben null für die Textur, da wir im Block (noch) kein Texturfeld haben
+    return `App.createParticleSystem("${id}", "${target}", ${count}, "${color}", ${size}, null, ${spread});\n`;
+};
+
+GC.forBlock['vfx_remove_particles'] = function(block) {
+    const id = block.getFieldValue('ID');
+    return `App.removeParticleSystem("${id}");\n`;
+};
 
 
 
