@@ -422,11 +422,11 @@ Blockly.Blocks['ui_set_gradient'] = {
             .appendField("UI Verlauf für:")
             .appendField(new Blockly.FieldTextInput("elementID"), "ID");
         this.appendDummyInput()
-            .appendField("Farbe 1:")
-            // WICHTIG: FieldColor statt FieldColour
-            .appendField(new Blockly.FieldColor("#ffffff"), "COL1") 
-            .appendField("Farbe 2:")
-            .appendField(new Blockly.FieldColor("#000000"), "COL2");
+            .appendField("Farbe 1 (Hex/Name):")
+            .appendField(new Blockly.FieldTextInput("#ffffff"), "COL1");
+        this.appendDummyInput()
+            .appendField("Farbe 2 (Hex/Name):")
+            .appendField(new Blockly.FieldTextInput("#000000"), "COL2");
         this.appendDummyInput()
             .appendField("Richtung:")
             .appendField(new Blockly.FieldDropdown([
@@ -438,11 +438,10 @@ Blockly.Blocks['ui_set_gradient'] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(230);
-        this.setTooltip("Erzeugt einen linearen Farbverlauf für das gewählte UI-Element.");
+        this.setTooltip("Erzeugt einen Farbverlauf. Nutze Hex-Codes oder Farbnamen.");
         this.setHelpUrl("");
     }
 };
-
 
 
 // --- GENERATORS CONFIG ---
@@ -699,11 +698,9 @@ GC.forBlock['ui_set_gradient'] = function(block) {
     const col2 = block.getFieldValue('COL2');
     const dir = block.getFieldValue('DIRECTION');
 
-    // Erzeugt den Aufruf für deine App.setUIGradient Funktion
+    // Wir setzen die Werte in Anführungszeichen, damit sie im generierten Code als Strings ankommen
     return `App.setUIGradient("${id}", "${col1}", "${col2}", "${dir}");\n`;
 };
-
-
 
 
 
