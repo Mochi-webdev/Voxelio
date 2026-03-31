@@ -394,7 +394,28 @@ Blockly.Blocks['custom_function_call'] = {
         this.setFieldValue(name, "NAME_LABEL");
     }
 };
-
+Blockly.Blocks['ui_grid_layout'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("UI Grid Layout für Frame:")
+        .appendField(new Blockly.FieldTextInput("parentID"), "PARENT");
+    this.appendDummyInput()
+        .appendField("Spalten:")
+        .appendField(new Blockly.FieldNumber(3, 1), "COLS")
+        .appendField("Abstand:")
+        .appendField(new Blockly.FieldNumber(5, 0), "GAP")
+        .appendField("px");
+    this.appendDummyInput()
+        .appendField("Zellengröße B:")
+        .appendField(new Blockly.FieldNumber(50, 1), "CELL_W")
+        .appendField("H:")
+        .appendField(new Blockly.FieldNumber(50, 1), "CELL_H");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(260);
+    this.setTooltip("Ordnet alle Kinder in diesem Frame automatisch als Gitter an.");
+  }
+};
 
 
 
@@ -630,7 +651,15 @@ GC['custom_function_call'] = function(block) {
 
 // Also do it the standard way just to be sure
 GC.forBlock['custom_function_call'] = GC['custom_function_call'];
+GC.forBlock['ui_grid_layout'] = wrap(b => {
+  const parentId = b.getFieldValue('PARENT');
+  const cols = b.getFieldValue('COLS');
+  const gap = b.getFieldValue('GAP');
+  const cellW = b.getFieldValue('CELL_W');
+  const cellH = b.getFieldValue('CELL_H');
 
+  return `App.applyGridLayout('${parentId}', ${cols}, ${gap}, ${cellW}, ${cellH});\n`;
+});
 
 
 

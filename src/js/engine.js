@@ -592,7 +592,21 @@ window.App = {
         }, 50);
     }
 };
-
+App.applyGridLayout = function(parentId, cols, gap, cellW, cellH) {
+    // Hole alle UI-Elemente, die diesen Parent haben
+    const children = Object.values(App.uiElements).filter(ui => ui.parent === parentId);
+    
+    children.forEach((ui, index) => {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        
+        const newX = col * (cellW + gap);
+        const newY = row * (cellH + gap);
+        
+        // Aktualisiere die Position des UI-Elements im System
+        App.updateUIPosition(ui.id, newX, newY, cellW, cellH);
+    });
+};
 window.UI = {
     async loadFromCloud(projectName) {
         const urlParams = new URLSearchParams(window.location.search);
