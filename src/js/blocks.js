@@ -423,9 +423,10 @@ Blockly.Blocks['ui_set_gradient'] = {
             .appendField(new Blockly.FieldTextInput("elementID"), "ID");
         this.appendDummyInput()
             .appendField("Farbe 1:")
-            .appendField(new Blockly.FieldColour("#ffffff"), "COL1")
+            // WICHTIG: FieldColor statt FieldColour
+            .appendField(new Blockly.FieldColor("#ffffff"), "COL1") 
             .appendField("Farbe 2:")
-            .appendField(new Blockly.FieldColour("#000000"), "COL2");
+            .appendField(new Blockly.FieldColor("#000000"), "COL2");
         this.appendDummyInput()
             .appendField("Richtung:")
             .appendField(new Blockly.FieldDropdown([
