@@ -291,29 +291,46 @@ window.App = {
 
     createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
         if (this.uiElements[id]) this.uiElements[id].remove();
+
         const el = document.createElement(type === 'button' ? 'button' : 'div');
         el.id = id;
-        
-        // KORREKTUR: Parent-ID im DOM Element speichern
-        if (parentId) {
-            el.dataset.parent = parentId;
-        }
+
+        // Speichere Parent-Info
+        if (parentId) el.dataset.parent = parentId;
 
         Object.assign(el.style, {
-            position: "absolute", left: x + "px", top: y + "px", width: w + "px", height: h + "px",
-            zIndex: "100", display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "sans-serif", boxSizing: "border-box", border: "none", transition: "opacity 0.3s ease", opacity: "1"
+            position: "absolute",
+            left: x + "px",
+            top: y + "px",
+            width: w + "px",
+            height: h + "px",
+            zIndex: "100",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "sans-serif",
+            boxSizing: "border-box",
+            border: "none",
+            transition: "opacity 0.3s ease",
+            opacity: "1"
         });
+
+        // WICHTIG: Wenn es ein Frame ist, muss er 'relative' sein, 
+        // damit Kinder sich an IHM ausrichten!
+        if (type === 'frame' || type === 'scrolling_frame') {
+            el.style.position = "absolute"; // Er selbst bleibt absolute zum Parent/Canvas
+            el.style.overflow = type === 'scrolling_frame' ? "auto" : "hidden";
+            // Erlaubt Kindern, sich an diesem Element zu orientieren:
+            el.style.display = "block";
+        }
 
         if (type === 'button') {
             el.innerText = text;
             el.style.cursor = "pointer";
             el.onclick = () => this.setVariable(`btn_${id}_clicked`, true);
-        } else if (type === 'scrolling_frame') {
-            el.style.overflowY = "auto";
-            el.style.display = "block";
         }
 
+        // Design-Check (Texture oder Farbe)
         if (texture && texture !== "none" && this.textures[texture]) {
             el.style.backgroundImage = `url(${this.textures[texture]})`;
             el.style.backgroundSize = "100% 100%";
@@ -323,11 +340,19 @@ window.App = {
             if (type === 'button') el.style.color = "white";
         }
 
-        let target = (parentId && this.uiElements[parentId]) ? this.uiElements[parentId] : document.getElementById('canvas3d');
+        // --- HIER IST DER ENTSCHEIDENDE TEIL ---
+        let target;
+        if (parentId && this.uiElements[parentId]) {
+            target = this.uiElements[parentId];
+        } else {
+            target = document.getElementById('canvas3d');
+        }
+
         if (target) {
             target.appendChild(el);
             this.uiElements[id] = el;
         }
+
         this.updateExplorer();
     },
 
@@ -600,7 +625,7 @@ window.App = {
 };
 
 // KORREKTUR: Greift jetzt auf das HTML Element direkt zu
-App.updateUIPosition = function(id, x, y, w, h) {
+App.updateUIPosition = function (id, x, y, w, h) {
     const ui = App.uiElements[id];
     if (ui) {
         // Das tatsächliche HTML/CSS Element auf dem Bildschirm verschieben
@@ -608,7 +633,7 @@ App.updateUIPosition = function(id, x, y, w, h) {
         ui.style.top = y + "px";
         ui.style.width = w + "px";
         ui.style.height = h + "px";
-        
+
         console.log(`UI ${id} wurde auf Pos ${x},${y} verschoben.`);
     } else {
         console.warn(`Konnte Position für ${id} nicht aktualisieren: Element nicht gefunden.`);
