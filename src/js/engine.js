@@ -838,26 +838,67 @@ App.tweenSize = function(id, targetScale, duration, ease) {
     this.tickListeners.push(tweenUpdate);
 };
 App.updateExplorer = function() {
-    const container = document.getElementById('explorer-list');
+    // Wir versuchen beide möglichen IDs zu finden (für maximale Kompatibilität mit deinem HTML)
+    const container = document.getElementById('explorer-list') || document.getElementById('sceneList');
+    
+    if (!container) return; // Falls keins von beiden existiert, einfach abbrechen
+
     container.innerHTML = ""; // Leeren
+
+    // 1. HEADER FÜR 3D OBJEKTE
+    const header3d = document.createElement('div');
+    header3d.innerHTML = "<small style='color: #888; font-weight: bold;'>📦 3D HIERARCHIE</small>";
+    header3d.style.marginBottom = "5px";
+    container.appendChild(header3d);
 
     const renderTree = (obj, depth = 0) => {
         const item = document.createElement('div');
-        item.style.paddingLeft = (depth * 15) + "px"; // Einrückung pro Ebene
-        item.innerHTML = (depth > 0 ? "┕ " : "") + obj.name;
+        item.className = "scene-item";
+        item.style.paddingLeft = (depth * 15 + 5) + "px";
+        item.style.cursor = "default";
+        
+        // Icon basierend auf Typ (optional)
+        let icon = depth === 0 ? "🟦 " : "┕ ";
+        item.innerHTML = `<span style="color: #eee;">${icon}${obj.name}</span>`;
         container.appendChild(item);
 
-        // Falls das Objekt Kinder hat (Three.js Struktur)
         if (obj.children) {
             obj.children.forEach(child => {
-                if (child.type !== "Sprite") renderTree(child, depth + 1);
+                // Wir filtern Three.js interne Objekte wie Helper oder Kameras aus
+                if (child.type === "Mesh" || child.type === "Group" || child.type === "Points") {
+                    renderTree(child, depth + 1);
+                }
             });
         }
     };
 
-    // Starte mit allen Objekten, die keinen Parent haben (direkt in der Szene)
+    // Nur Wurzel-Objekte rendern (die direkt in der Szene liegen)
     Object.values(this.objects).forEach(obj => {
-        if (obj.parent === this.scene) renderTree(obj);
+        if (obj.parent === this.scene) {
+            renderTree(obj);
+        }
+    });
+
+    // 2. HEADER FÜR UI ELEMENTE
+    const hr = document.createElement('hr');
+    hr.style.cssText = "border:0; border-top:1px solid #333; margin:10px 0;";
+    container.appendChild(hr);
+
+    const headerUi = document.createElement('div');
+    headerUi.innerHTML = "<small style='color: #888; font-weight: bold;'>🖼️ UI ELEMENTE</small>";
+    headerUi.style.marginBottom = "5px";
+    container.appendChild(headerUi);
+
+    Object.keys(this.uiElements).forEach(id => {
+        const el = this.uiElements[id];
+        // Nur Root-UI-Elemente anzeigen (die kein 'data-parent' haben), 
+        // oder einfach alle flach auflisten:
+        const item = document.createElement('div');
+        item.className = "scene-item ui-item";
+        item.style.paddingLeft = "5px";
+        const type = el.tagName.toLowerCase() === 'button' ? 'Button' : 'Frame';
+        item.innerHTML = `<span style="color: #adc4ff;">🖼️ ${id} <small style="opacity:0.6">(${type})</small></span>`;
+        container.appendChild(item);
     });
 };
 window.UI = {
