@@ -697,80 +697,76 @@ App.createParticleMaterial = function (color, size, textureData = null) {
     return material;
 };
 
-// Funktion zum Erstellen eines Partikelsystems
-App.createParticleSystem = function (id, attachToObjName, particleCount, color, size, textureName = null, spread = 0.5) {
-    if (this.particleSystems[id]) {
-        this.removeParticleSystem(id); // Altes System entfernen
-    }
+App.createParticleSystem = function(id, attachToObjName, type, color) {
+    if (this.particleSystems[id]) this.removeParticleSystem(id);
 
     const attachToObject = this.objects[attachToObjName];
-    if (!attachToObject) {
-        console.warn(`Partikelsystem ${id}: Objekt ${attachToObjName} zum Anheften nicht gefunden.`);
-        return;
-    }
+    if (!attachToObject) return;
 
-    const particlesGeometry = new THREE.BufferGeometry();
+    const particleCount = (type === 'explosion') ? 300 : 100;
+    const geometry = new THREE.BufferGeometry();
     const positions = [];
-    const velocities = []; // Optional: für Partikelbewegung
+    const velocities = [];
 
     for (let i = 0; i < particleCount; i++) {
-        // Initialposition relativ zum Objekt mit etwas Streuung
-        positions.push(
-            (Math.random() - 0.5) * spread,
-            (Math.random() - 0.5) * spread,
-            (Math.random() - 0.5) * spread
-        );
-        // Beispiel: leichte Aufwärtsbewegung und Zufallsdrift
-        velocities.push(
-            (Math.random() - 0.5) * 0.01,
-            Math.random() * 0.03 + 0.01, // Nach oben steigen
-            (Math.random() - 0.5) * 0.01
-        );
+        positions.push(0, 0, 0); // Start am Objektzentrum
+
+        let vx, vy, vz;
+        if (type === "fire" || type === "smoke") {
+            vx = (Math.random() - 0.5) * 0.02;
+            vy = Math.random() * 0.05 + 0.02;
+            vz = (Math.random() - 0.5) * 0.02;
+        } else if (type === "explosion") {
+            // In alle Richtungen schießen
+            vx = (Math.random() - 0.5) * 0.2;
+            vy = (Math.random() - 0.5) * 0.2;
+            vz = (Math.random() - 0.5) * 0.2;
+        } else if (type === "snow") {
+            vx = (Math.random() - 0.5) * 0.01;
+            vy = -(Math.random() * 0.02 + 0.01); // Nach unten fallen
+            vz = (Math.random() - 0.5) * 0.01;
+        } else { // magic
+            vx = Math.sin(i) * 0.05;
+            vy = Math.cos(i) * 0.05;
+            vz = (Math.random() - 0.5) * 0.05;
+        }
+        velocities.push(vx, vy, vz);
     }
 
-    particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    particlesGeometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3)); // Speichere Geschwindigkeiten
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
 
-    const textureData = textureName && this.textures[textureName] ? this.textures[textureName] : null;
-    const particlesMaterial = this.createParticleMaterial(color, size, textureData);
+    const material = new THREE.PointsMaterial({
+        color: color,
+        size: (type === 'smoke') ? 0.2 : 0.1,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
 
-    const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
-    particleSystem.name = id;
+    const system = new THREE.Points(geometry, material);
+    attachToObject.add(system);
+    this.particleSystems[id] = system;
 
-    // Partikelsystem dem 3D-Objekt als Kind hinzufügen
-    attachToObject.add(particleSystem);
-    this.particleSystems[id] = particleSystem;
+    const update = () => {
+        const posArr = system.geometry.attributes.position.array;
+        const velArr = system.geometry.attributes.velocity.array;
 
-    // Füge einen Tick-Listener hinzu, um Partikel zu aktualisieren
-    const updateParticles = () => {
-        const pGeo = particleSystem.geometry;
-        const positions = pGeo.attributes.position.array;
-        const velocities = pGeo.attributes.velocity.array;
+        for (let i = 0; i < posArr.length; i += 3) {
+            posArr[i] += velArr[i];
+            posArr[i+1] += velArr[i+1];
+            posArr[i+2] += velArr[i+2];
 
-        for (let i = 0; i < positions.length; i += 3) {
-            positions[i] += velocities[i];     // x
-            positions[i + 1] += velocities[i + 1]; // y (Partikel steigen auf)
-            positions[i + 2] += velocities[i + 2]; // z
-
-            // Beispiel: Partikel resetten, wenn sie zu hoch fliegen
-            if (positions[i + 1] > spread * 2) {
-                positions[i] = (Math.random() - 0.5) * spread;
-                positions[i + 1] = (Math.random() - 0.5) * spread;
-                positions[i + 2] = (Math.random() - 0.5) * spread;
-
-                // Neue leichte Aufwärtsbewegung
-                velocities[i] = (Math.random() - 0.5) * 0.01;
-                velocities[i + 1] = Math.random() * 0.03 + 0.01;
-                velocities[i + 2] = (Math.random() - 0.5) * 0.01;
+            // Reset-Logik je nach Typ
+            if (type !== "explosion" && Math.abs(posArr[i+1]) > 2) {
+                posArr[i] = 0; posArr[i+1] = 0; posArr[i+2] = 0;
             }
         }
-        pGeo.attributes.position.needsUpdate = true;
+        system.geometry.attributes.position.needsUpdate = true;
     };
-    this.tickListeners.push(updateParticles); // Jede Frame aktualisieren
-    particleSystem.userData.tickFunction = updateParticles; // Referenz speichern zum Entfernen
 
-    this.updateExplorer();
-    console.log(`Partikelsystem ${id} an Objekt ${attachToObjName} erstellt.`);
+    this.tickListeners.push(update);
+    system.userData.tickFunction = update;
 };
 
 // Funktion zum Entfernen eines Partikelsystems
