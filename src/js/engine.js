@@ -658,6 +658,18 @@ App.applyGridLayout = function (parentId, cols, gap, cellW, cellH) {
         App.updateUIPosition(el.id, newX, newY, cellW, cellH);
     });
 };
+App.setUIGradient = function(id, color1, color2, direction = "to bottom") {
+    const el = this.uiElements[id];
+    if (el) {
+        // Wir nutzen linear-gradient für den Hintergrund
+        el.style.backgroundImage = `linear-gradient(${direction}, ${color1}, ${color2})`;
+        // Wir setzen die Hintergrundfarbe auf transparent, damit der Verlauf sichtbar ist
+        el.style.backgroundColor = "transparent";
+        console.log(`Gradient für ${id} gesetzt: ${color1} -> ${color2}`);
+    } else {
+        console.warn(`Konnte Gradient für ${id} nicht setzen: Element nicht gefunden.`);
+    }
+};
 
 window.UI = {
     async loadFromCloud(projectName) {

@@ -416,7 +416,31 @@ Blockly.Blocks['ui_grid_layout'] = {
         this.setTooltip("Ordnet alle Kinder in diesem Frame automatisch als Gitter an.");
     }
 };
-
+Blockly.Blocks['ui_set_gradient'] = {
+    init: function () {
+        this.appendDummyInput()
+            .appendField("UI Verlauf für:")
+            .appendField(new Blockly.FieldTextInput("elementID"), "ID");
+        this.appendDummyInput()
+            .appendField("Farbe 1:")
+            .appendField(new Blockly.FieldColour("#ffffff"), "COL1")
+            .appendField("Farbe 2:")
+            .appendField(new Blockly.FieldColour("#000000"), "COL2");
+        this.appendDummyInput()
+            .appendField("Richtung:")
+            .appendField(new Blockly.FieldDropdown([
+                ["nach unten", "to bottom"],
+                ["nach rechts", "to right"],
+                ["diagonal", "to bottom right"],
+                ["nach oben", "to top"]
+            ]), "DIRECTION");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+        this.setTooltip("Erzeugt einen linearen Farbverlauf für das gewählte UI-Element.");
+        this.setHelpUrl("");
+    }
+};
 
 
 
@@ -668,7 +692,15 @@ GC.forBlock['ui_grid_layout'] = wrap(b => {
 
     return `App.applyGridLayout('${parentId}', ${cols}, ${gap}, ${cellW}, ${cellH});\n`;
 });
+GC.forBlock['ui_set_gradient'] = function(block) {
+    const id = block.getFieldValue('ID');
+    const col1 = block.getFieldValue('COL1');
+    const col2 = block.getFieldValue('COL2');
+    const dir = block.getFieldValue('DIRECTION');
 
+    // Erzeugt den Aufruf für deine App.setUIGradient Funktion
+    return `App.setUIGradient("${id}", "${col1}", "${col2}", "${dir}");\n`;
+};
 
 
 
