@@ -592,17 +592,28 @@ window.App = {
         }, 50);
     }
 };
-App.applyGridLayout = function(parentId, cols, gap, cellW, cellH) {
+App.setUIParent = function (childId, parentId) {
+    const child = App.uiElements[childId];
+    if (child) {
+        child.parent = parentId;
+        // Falls du ein Grid-Layout nutzt, sollte es hier neu berechnet werden:
+        if (App.applyGridLayout) {
+            App.applyGridLayout(parentId);
+        }
+        console.log(`UI ${childId} wurde nach ${parentId} verschoben.`);
+    }
+};
+App.applyGridLayout = function (parentId, cols, gap, cellW, cellH) {
     // Hole alle UI-Elemente, die diesen Parent haben
     const children = Object.values(App.uiElements).filter(ui => ui.parent === parentId);
-    
+
     children.forEach((ui, index) => {
         const row = Math.floor(index / cols);
         const col = index % cols;
-        
+
         const newX = col * (cellW + gap);
         const newY = row * (cellH + gap);
-        
+
         // Aktualisiere die Position des UI-Elements im System
         App.updateUIPosition(ui.id, newX, newY, cellW, cellH);
     });

@@ -395,26 +395,26 @@ Blockly.Blocks['custom_function_call'] = {
     }
 };
 Blockly.Blocks['ui_grid_layout'] = {
-  init: function() {
-    this.appendDummyInput()
-        .appendField("UI Grid Layout für Frame:")
-        .appendField(new Blockly.FieldTextInput("parentID"), "PARENT");
-    this.appendDummyInput()
-        .appendField("Spalten:")
-        .appendField(new Blockly.FieldNumber(3, 1), "COLS")
-        .appendField("Abstand:")
-        .appendField(new Blockly.FieldNumber(5, 0), "GAP")
-        .appendField("px");
-    this.appendDummyInput()
-        .appendField("Zellengröße B:")
-        .appendField(new Blockly.FieldNumber(50, 1), "CELL_W")
-        .appendField("H:")
-        .appendField(new Blockly.FieldNumber(50, 1), "CELL_H");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(260);
-    this.setTooltip("Ordnet alle Kinder in diesem Frame automatisch als Gitter an.");
-  }
+    init: function () {
+        this.appendDummyInput()
+            .appendField("UI Grid Layout für Frame:")
+            .appendField(new Blockly.FieldTextInput("parentID"), "PARENT");
+        this.appendDummyInput()
+            .appendField("Spalten:")
+            .appendField(new Blockly.FieldNumber(3, 1), "COLS")
+            .appendField("Abstand:")
+            .appendField(new Blockly.FieldNumber(5, 0), "GAP")
+            .appendField("px");
+        this.appendDummyInput()
+            .appendField("Zellengröße B:")
+            .appendField(new Blockly.FieldNumber(50, 1), "CELL_W")
+            .appendField("H:")
+            .appendField(new Blockly.FieldNumber(50, 1), "CELL_H");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(260);
+        this.setTooltip("Ordnet alle Kinder in diesem Frame automatisch als Gitter an.");
+    }
 };
 
 
@@ -545,6 +545,14 @@ GC.forBlock['create_ui'] = wrap(b => `App.createUI('${b.getFieldValue('TYPE')}',
 GC.forBlock['ui_button_pressed'] = (b) => [`App.isButtonClicked('${b.getFieldValue('ID')}')`, ORDER_ATOMIC];
 GC.forBlock['remove_ui'] = wrap(b => `App.removeUI('${b.getFieldValue('ID')}');\n`);
 GC.forBlock['set_ui_text'] = wrap((b, g) => `App.setUIText('${b.getFieldValue('ID')}', ${g.valueToCode(b, 'TEXT', ORDER_ATOMIC) || "''"});\n`);
+// Generator für das Verschieben eines UI-Elements in einen anderen Frame
+GC.forBlock['set_ui_parent'] = wrap(function (block) {
+    const childId = block.getFieldValue('CHILD');
+    const parentId = block.getFieldValue('PARENT');
+
+    // Dieser Code wird in der Engine ausgeführt
+    return `App.setUIParent('${childId}', '${parentId}');\n`;
+});
 GC.forBlock['style_ui'] = wrap(b => {
     return `App.styleUI('${b.getFieldValue('ID')}', { radius: ${b.getFieldValue('RADIUS')}, bgColor: '${b.getFieldValue('BG_COLOR')}', opacity: ${b.getFieldValue('OPACITY')}, strokeWidth: ${b.getFieldValue('STROKE_W')}, strokeColor: '${b.getFieldValue('STROKE_C')}' });\n`;
 });
@@ -633,18 +641,18 @@ GC.forBlock['wait_seconds'] = function (block, generator) {
     // WICHTIG: Das await sorgt dafür, dass die Engine pausiert
     return `await new Promise(resolve => setTimeout(resolve, ${seconds} * 1000));\n`;
 };
-GC.forBlock['custom_function_definition'] = function(block) {
+GC.forBlock['custom_function_definition'] = function (block) {
     const rawName = block.getFieldValue('NAME') || "unnamed";
     const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
     const branch = GC.statementToCode(block, 'STACK');
-    
+
     // This creates the function on the window so the 'Call' block can find it
     return `window["func_${funcName}"] = function() {\n${branch}};\n`;
 };
-GC['custom_function_call'] = function(block) {
+GC['custom_function_call'] = function (block) {
     const rawName = block.getFieldValue('NAME_LABEL') || "unnamed";
     const funcName = rawName.replace(/[^a-zA-Z0-9]/g, '_');
-    
+
     // We return a string. Note: No 'await' here yet to prevent syntax crashes.
     return `if (typeof window["func_${funcName}"] === "function") {\n  window["func_${funcName}"]();\n}\n`;
 };
@@ -652,13 +660,13 @@ GC['custom_function_call'] = function(block) {
 // Also do it the standard way just to be sure
 GC.forBlock['custom_function_call'] = GC['custom_function_call'];
 GC.forBlock['ui_grid_layout'] = wrap(b => {
-  const parentId = b.getFieldValue('PARENT');
-  const cols = b.getFieldValue('COLS');
-  const gap = b.getFieldValue('GAP');
-  const cellW = b.getFieldValue('CELL_W');
-  const cellH = b.getFieldValue('CELL_H');
+    const parentId = b.getFieldValue('PARENT');
+    const cols = b.getFieldValue('COLS');
+    const gap = b.getFieldValue('GAP');
+    const cellW = b.getFieldValue('CELL_W');
+    const cellH = b.getFieldValue('CELL_H');
 
-  return `App.applyGridLayout('${parentId}', ${cols}, ${gap}, ${cellW}, ${cellH});\n`;
+    return `App.applyGridLayout('${parentId}', ${cols}, ${gap}, ${cellW}, ${cellH});\n`;
 });
 
 
