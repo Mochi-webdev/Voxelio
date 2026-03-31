@@ -290,64 +290,64 @@ window.App = {
     },
 
    createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
-        // Altes Element entfernen, falls vorhanden
         if (this.uiElements[id]) this.uiElements[id].remove();
         
         const el = document.createElement(type === 'button' ? 'button' : 'div');
         el.id = id;
         
-        // Parent-ID im Dataset speichern
+        // WICHTIG: Parent-Referenz speichern
         if (parentId) el.dataset.parent = parentId;
 
-        // Basis-Styling
         Object.assign(el.style, {
             position: "absolute",
             left: x + "px",
             top: y + "px",
             width: w + "px",
             height: h + "px",
-            zIndex: "100",
+            zIndex: parentId ? "1" : "100", // Kinder brauchen keinen riesigen Z-Index
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "sans-serif",
             boxSizing: "border-box",
             border: "none",
-            transition: "opacity 0.3s ease",
-            opacity: "1"
+            outline: "none"
         });
 
-        // Spezifisches Verhalten für Frames
+        // Frame-Logik: Muss Kinder-Koordinaten "fangen"
         if (type === 'frame' || type === 'scrolling_frame') {
-            // WICHTIG: relative sorgt dafür, dass Kinder (absolute) sich an diesem Frame ausrichten!
-            el.style.position = "absolute"; 
             el.style.display = "block"; 
             el.style.overflow = (type === 'scrolling_frame') ? "auto" : "hidden";
-            // Ein Frame braucht einen Stapelkontext (z-index), damit Kinder darüber liegen
-            if (!texture || texture === "none") el.style.backgroundColor = "rgba(0,0,0,0.5)";
+            // 'pointer-events: auto' sorgt dafür, dass Klicks nicht durch das Panel gehen
+            el.style.pointerEvents = "auto";
         }
 
         if (type === 'button') {
             el.innerText = text;
             el.style.cursor = "pointer";
-            el.onclick = () => this.setVariable(`btn_${id}_clicked`, true);
+            el.onclick = (e) => {
+                e.stopPropagation(); // Klick soll nicht durch den Frame gehen
+                this.setVariable(`btn_${id}_clicked`, true);
+            };
         }
 
-        // Texture-Handling
+        // Texture/Farbe
         if (texture && texture !== "none" && this.textures[texture]) {
             el.style.backgroundImage = `url(${this.textures[texture]})`;
             el.style.backgroundSize = "100% 100%";
             el.style.backgroundColor = "transparent";
+        } else {
+            el.style.backgroundColor = type === 'button' ? "#444" : "rgba(50,50,50,0.8)";
+            if (type === 'button') el.style.color = "white";
         }
 
-        // --- DOM EINORDNUNG ---
-        // Wenn ein parentId angegeben ist, hänge es dort rein, sonst in die Canvas
-        let container = (parentId && this.uiElements[parentId]) 
-                        ? this.uiElements[parentId] 
-                        : document.getElementById('canvas3d');
+        // --- Korrektes Appending ---
+        let target = (parentId && this.uiElements[parentId]) 
+                     ? this.uiElements[parentId] 
+                     : document.getElementById('canvas3d');
 
-        if (container) {
-            container.appendChild(el);
+        if (target) {
+            target.appendChild(el);
             this.uiElements[id] = el;
         }
         
@@ -623,26 +623,22 @@ window.App = {
 };
 
 App.updateUIPosition = function(id, x, y, w, h) {
-    const ui = App.uiElements[id];
-    if (ui) {
-        ui.style.left = x + "px";
-        ui.style.top = y + "px";
-        ui.style.width = w + "px";
-        ui.style.height = h + "px";
-        console.log(`UI ${id} verschoben zu ${x},${y} (relativ zum Parent)`);
+    const el = App.uiElements[id];
+    if (el) {
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = w + "px";
+        el.style.height = h + "px";
     }
 };
 
-// KORREKTUR: Dataset statt property
 App.setUIParent = function (childId, parentId) {
     const child = App.uiElements[childId];
-    if (child) {
+    const parent = App.uiElements[parentId];
+    if (child && parent) {
         child.dataset.parent = parentId;
-        // Falls du ein Grid-Layout nutzt, sollte es hier neu berechnet werden
-        if (App.applyGridLayout) {
-            App.applyGridLayout(parentId);
-        }
-        console.log(`UI ${childId} wurde nach ${parentId} verschoben.`);
+        parent.appendChild(child); // Verschiebt das Element im HTML-Baum
+        console.log(`UI ${childId} wurde in Frame ${parentId} verschoben.`);
     }
 };
 
