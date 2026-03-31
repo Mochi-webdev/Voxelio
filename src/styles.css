@@ -508,3 +508,24 @@ body {
 #sidePanel.is-maximized #log {
     display: none !important;
 }
+.scene-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    user-select: none; /* Text markieren verhindern beim Klicken */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.scene-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Der Scroll-Container von vorhin */
+#explorer-list {
+    max-height: 500px;
+    overflow-y: auto;
+    background: #111;
+    border: 1px solid #222;
+}

@@ -80,6 +80,7 @@ window.App = {
     controls: null,
     objects: {},
     uiElements: {},
+    collapsedGroups: {},
     textures: {},
     variables: {},
     keyListeners: {},
@@ -837,38 +838,47 @@ App.tweenSize = function (id, targetScale, duration, ease) {
 
     this.tickListeners.push(tweenUpdate);
 };
-App.updateExplorer = function () {
-    // Wir versuchen beide möglichen IDs zu finden (für maximale Kompatibilität mit deinem HTML)
+App.updateExplorer = function() {
     const container = document.getElementById('explorer-list') || document.getElementById('sceneList');
+    if (!container) return;
 
-    if (!container) return; // Falls keins von beiden existiert, einfach abbrechen
-    // Styling direkt via JS für Scrollbarkeit
-    container.style.maxHeight = "400px";
-    container.style.overflowY = "auto";
-    container.style.overflowX = "hidden";
-    container.style.display = "block"; // Sicherstellen, dass es kein Flex-Layout stört
-    container.innerHTML = ""; // Leeren
-
-    // 1. HEADER FÜR 3D OBJEKTE
-    const header3d = document.createElement('div');
-    header3d.innerHTML = "<small style='color: #888; font-weight: bold;'>📦 3D HIERARCHIE</small>";
-    header3d.style.marginBottom = "5px";
-    container.appendChild(header3d);
+    container.innerHTML = "";
 
     const renderTree = (obj, depth = 0) => {
+        // Prüfen, ob dieses Objekt Kinder hat (also eine Gruppe/Parent ist)
+        const hasChildren = obj.children && obj.children.filter(c => c.type === "Mesh" || c.type === "Group" || c.type === "Points").length > 0;
+        const isCollapsed = this.collapsedGroups[obj.name] || false;
+
         const item = document.createElement('div');
         item.className = "scene-item";
         item.style.paddingLeft = (depth * 15 + 5) + "px";
-        item.style.cursor = "default";
+        item.style.display = "flex";
+        item.style.alignItems = "center";
+        item.style.cursor = "pointer";
 
-        // Icon basierend auf Typ (optional)
-        let icon = depth === 0 ? "🟦 " : "┕ ";
-        item.innerHTML = `<span style="color: #858585;">${icon}${obj.name}</span>`;
+        // Das Icon (Pfeil für Gruppen, Punkt für Einzelobjekte)
+        let icon = "📄 ";
+        if (hasChildren) {
+            icon = isCollapsed ? "▶️ " : "▼ ";
+        }
+
+        item.innerHTML = `<span style="margin-right: 5px; font-size: 10px;">${icon}</span>
+                          <span style="color: #eee;">${obj.name}</span>`;
+
+        // Klick-Event zum Ein-/Ausklappen
+        if (hasChildren) {
+            item.onclick = (e) => {
+                e.stopPropagation();
+                this.collapsedGroups[obj.name] = !isCollapsed;
+                this.updateExplorer(); // Neu zeichnen
+            };
+        }
+
         container.appendChild(item);
 
-        if (obj.children) {
+        // Kinder nur rendern, wenn NICHT eingeklappt
+        if (hasChildren && !isCollapsed) {
             obj.children.forEach(child => {
-                // Wir filtern Three.js interne Objekte wie Helper oder Kameras aus
                 if (child.type === "Mesh" || child.type === "Group" || child.type === "Points") {
                     renderTree(child, depth + 1);
                 }
@@ -876,32 +886,25 @@ App.updateExplorer = function () {
         }
     };
 
-    // Nur Wurzel-Objekte rendern (die direkt in der Szene liegen)
+    // 3D Objekte Header
+    const h3d = document.createElement('div');
+    h3d.innerHTML = "<small style='color: #888; font-weight: bold; padding: 5px;'>📦 3D SZENE</small>";
+    container.appendChild(h3d);
+
     Object.values(this.objects).forEach(obj => {
-        if (obj.parent === this.scene) {
-            renderTree(obj);
-        }
+        if (obj.parent === this.scene) renderTree(obj);
     });
 
-    // 2. HEADER FÜR UI ELEMENTE
+    // UI Elemente (einfache Liste)
     const hr = document.createElement('hr');
     hr.style.cssText = "border:0; border-top:1px solid #333; margin:10px 0;";
     container.appendChild(hr);
 
-    const headerUi = document.createElement('div');
-    headerUi.innerHTML = "<small style='color: #888; font-weight: bold;'>🖼️ UI ELEMENTE</small>";
-    headerUi.style.marginBottom = "5px";
-    container.appendChild(headerUi);
-
     Object.keys(this.uiElements).forEach(id => {
-        const el = this.uiElements[id];
-        // Nur Root-UI-Elemente anzeigen (die kein 'data-parent' haben), 
-        // oder einfach alle flach auflisten:
         const item = document.createElement('div');
-        item.className = "scene-item ui-item";
+        item.className = "scene-item";
         item.style.paddingLeft = "5px";
-        const type = el.tagName.toLowerCase() === 'button' ? 'Button' : 'Frame';
-        item.innerHTML = `<span style="color: #adc4ff;">🖼️ ${id} <small style="opacity:0.6">(${type})</small></span>`;
+        item.innerHTML = `<span>🖼️ ${id}</span>`;
         container.appendChild(item);
     });
 };
