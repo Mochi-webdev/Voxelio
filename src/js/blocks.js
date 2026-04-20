@@ -84,23 +84,28 @@ Blockly.Blocks['move_object'] = {
 };
 Blockly.Blocks['set_texture'] = {
     init: function () {
-
+        // Das Dropdown nutzt eine anonyme Funktion, um getOptions aufzurufen
         const dropdown = new Blockly.FieldDropdown(() => this.getOptions());
 
+        this.appendValueInput("NAME")
+            .setCheck("String")
+            .appendField("Setze Textur von");
+        
         this.appendDummyInput()
-            .appendField("Setze Textur von")
-            .appendField(new Blockly.FieldTextInput("obj1"), "NAME")
             .appendField("auf")
             .appendField(dropdown, "TEX");
 
+        this.setInputsInline(true); // Alles in einer schicken Zeile
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(160);
     },
+    
     getOptions: function () {
         let options = [];
-
-        const savedTextures = Object.keys((window.App && window.App.textures) ? window.App.textures : {});
+        // Sicherstellen, dass App.textures existiert
+        const textures = (window.App && window.App.textures) ? window.App.textures : {};
+        const savedTextures = Object.keys(textures);
 
         if (savedTextures.length > 0) {
             savedTextures.forEach(name => options.push([name, name]));
@@ -590,7 +595,14 @@ GC.forBlock['create_shape'] = wrap((b, g) => {
 }); GC.forBlock['set_scale'] = wrap((b, g) => `App.setScale('${b.getFieldValue('NAME')}', ${g.valueToCode(b, 'VAL', ORDER_ATOMIC) || 1});\n`);
 GC.forBlock['rotate_forever'] = wrap(b => `App.addRotation('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', 0.02);\n`);
 GC.forBlock['set_dimensions'] = wrap((b, g) => `App.setDimension('${b.getFieldValue('NAME')}', '${b.getFieldValue('AXIS')}', ${g.valueToCode(b, 'VALUE', ORDER_ATOMIC) || 1});\n`);
-GC.forBlock['set_texture'] = wrap((b) => { const tex = b.getFieldValue('TEX'); return tex === "none" ? "" : `App.applyTexture('${b.getFieldValue('NAME')}', '${tex}');\n`; });
+javascriptGenerator.forBlock['set_texture'] = function (block) {
+    // Holt den Namen (Variable oder Text-Block). Falls leer, nutzen wir einen leeren String.
+    const nameCode = javascriptGenerator.valueToCode(block, 'NAME', javascriptGenerator.ORDER_ATOMIC) || "''";
+    const texture = block.getFieldValue('TEX');
+
+    // Wir rufen die Engine-Funktion auf
+    return `App.applyTexture(${nameCode}, "${texture}");\n`;
+};
 // --- UPDATED GENERATORS ---
 
 GC.forBlock['set_position'] = wrap((b, g) => {

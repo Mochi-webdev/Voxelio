@@ -148,5 +148,37 @@ window.TextureEditor = {
         img.src = window.App.textures[name];
     },
     
+    
 };
 window.addEventListener('load', () => TextureEditor.init());
+// Event-Listener für den Datei-Upload
+document.getElementById('textureFileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const base64Data = event.target.result;
+        
+        // Dateiname ohne Endung als Textur-ID verwenden
+        const textureName = file.name.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_');
+
+        // In der Engine speichern
+        window.App.textures[textureName] = base64Data;
+
+        console.log(`Textur "${textureName}" erfolgreich importiert.`);
+        
+        // UI aktualisieren (falls du eine Liste der Texturen anzeigst)
+        if (window.Editor && window.Editor.renderTextureList) {
+            window.Editor.renderTextureList();
+        }
+
+        // Optional: Automatisch in der Cloud speichern
+        const pName = new URLSearchParams(window.location.search).get('project');
+        if (pName && window.AuthHandler) {
+            window.AuthHandler.saveToCloud(pName, true);
+        }
+    };
+    
+    reader.readAsDataURL(file); // Wandelt das Bild in einen Base64 String um
+});
