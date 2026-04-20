@@ -116,8 +116,21 @@ Blockly.Blocks['setup_fpc'] = { init: function () { this.appendDummyInput().appe
 Blockly.Blocks['fpc_look'] = { init: function () { this.appendDummyInput().appendField("Kamera mit Maus drehen"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(290); } };
 Blockly.Blocks['fpc_move'] = { init: function () { this.appendDummyInput().appendField("Bewege relativ zu Blickrichtung:").appendField(new Blockly.FieldDropdown([["Vorwärts", "forward"], ["Rückwärts", "backward"], ["Links", "left"], ["Rechts", "right"]]), "DIR"); this.appendValueInput("SPEED").setCheck("Number").appendField("Speed"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(290); } };
 Blockly.Blocks['set_view_mode'] = { init: function () { this.appendDummyInput().appendField("Sichtmodus auf").appendField(new Blockly.FieldDropdown([["First Person", "fp"], ["Third Person", "tp"]]), "MODE"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(290); } };
-Blockly.Blocks['set_solid'] = { init: function () { this.appendDummyInput().appendField("Setze").appendField(new Blockly.FieldTextInput("obj1"), "NAME").appendField("als Festes Objekt:").appendField(new Blockly.FieldCheckbox("TRUE"), "SOLID"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(290); } };
-
+Blockly.Blocks['set_solid'] = {
+    init: function () {
+        this.appendValueInput("NAME")
+            .setCheck("String")
+            .appendField("Setze Objekt");
+        this.appendDummyInput()
+            .appendField("als Festes Objekt:")
+            .appendField(new Blockly.FieldCheckbox("TRUE"), "SOLID");
+        this.setInputsInline(true); // Macht den Block kompakt in einer Zeile
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(290);
+        this.setTooltip("Setzt ein Objekt als solid (Kollision an/aus). Akzeptiert Text oder Variablen.");
+    }
+};
 // --- LOGIC & VARIABLES ---
 Blockly.Blocks['logic_if'] = { init: function () { this.appendValueInput("CONDITION").setCheck("Boolean").appendField("wenn"); this.appendStatementInput("DO").appendField("mache"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
 Blockly.Blocks['logic_if_else'] = { init: function () { this.appendValueInput("CONDITION").setCheck("Boolean").appendField("wenn"); this.appendStatementInput("DO").appendField("mache"); this.appendStatementInput("ELSE").appendField("ansonsten"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
@@ -606,7 +619,15 @@ GC.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
 GC.forBlock['fpc_move'] = (b, g) => `App.moveFPC('${b.getFieldValue('DIR')}', ${g.valueToCode(b, 'SPEED', ORDER_ATOMIC) || "0.1"});\n`;
 GC.forBlock['player_jump'] = wrap((b, g) => `App.jump(${g.valueToCode(b, 'FORCE', ORDER_ATOMIC) || "0.3"});\n`);
 GC.forBlock['set_view_mode'] = (b) => `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
-GC.forBlock['set_solid'] = (b) => `App.setSolid('${b.getFieldValue('NAME')}', ${b.getFieldValue('SOLID') === 'TRUE'});\n`;
+GC.forBlock['set_solid'] = function(block) {
+    // Holt den Code vom angedockten Variablen- oder Text-Block
+    const nameCode = javascriptGenerator.valueToCode(block, 'NAME', javascriptGenerator.ORDER_ATOMIC) || "''";
+    const isSolid = block.getFieldValue('SOLID') === 'TRUE';
+
+    // Da nameCode bereits Anführungszeichen hat (wenn es ein String-Block ist) 
+    // oder eine Variable ist, setzen wir es direkt in die Funktion ein.
+    return `App.setSolid(${nameCode}, ${isSolid});\n`;
+};
 
 // --- LOGIC & VARIABLES GENERATORS ---
 GC.forBlock['logic_if'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', ORDER_ATOMIC) || 'false'}) {\n${g.statementToCode(b, 'DO')}}\n`;
