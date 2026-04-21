@@ -631,15 +631,12 @@ GC.forBlock['fpc_look'] = () => `App.updateFPCLook();\n`;
 GC.forBlock['fpc_move'] = (b, g) => `App.moveFPC('${b.getFieldValue('DIR')}', ${g.valueToCode(b, 'SPEED', ORDER_ATOMIC) || "0.1"});\n`;
 GC.forBlock['player_jump'] = wrap((b, g) => `App.jump(${g.valueToCode(b, 'FORCE', ORDER_ATOMIC) || "0.3"});\n`);
 GC.forBlock['set_view_mode'] = (b) => `App.setViewMode('${b.getFieldValue('MODE')}');\n`;
-GC.forBlock['set_solid'] = function(block) {
-    // Holt den Code vom angedockten Variablen- oder Text-Block
-    const nameCode = javascriptGenerator.valueToCode(block, 'NAME', javascriptGenerator.ORDER_ATOMIC) || "''";
+GC.forBlock['set_solid'] = wrap(function(block) {
+    const nameCode = javascriptGenerator.valueToCode(block, 'NAME', ORDER_ATOMIC) || "''";
     const isSolid = block.getFieldValue('SOLID') === 'TRUE';
 
-    // Da nameCode bereits Anführungszeichen hat (wenn es ein String-Block ist) 
-    // oder eine Variable ist, setzen wir es direkt in die Funktion ein.
     return `App.setSolid(${nameCode}, ${isSolid});\n`;
-};
+});
 
 // --- LOGIC & VARIABLES GENERATORS ---
 GC.forBlock['logic_if'] = (b, g) => `if (${g.valueToCode(b, 'CONDITION', ORDER_ATOMIC) || 'false'}) {\n${g.statementToCode(b, 'DO')}}\n`;
