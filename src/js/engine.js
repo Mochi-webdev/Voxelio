@@ -313,6 +313,17 @@ window.App = {
         }
     },
 
+    setViewMode(mode) {
+        if (!this.fpcPlayer) return;
+        if (mode === 'first') {
+            this.camera.position.set(0, this.playerHeight, 0);
+            this.camera.rotation.set(0, 0, 0);
+        } else if (mode === 'third') {
+            this.camera.position.set(0, this.playerHeight + 2, 4);
+            this.camera.lookAt(this.fpcPlayer.position);
+        }
+    },
+
     jump(force) {
         if (this.isGrounded) {
             this.velocityy = parseFloat(force);
