@@ -95,8 +95,6 @@ window.App = {
     gravity: -0.025,
     jumpForce: 0.18,
     mouseDelta: { x: 0, y: 0 },
-    keys: { w: false, a: false, s: false, d: false, " ": false },
-    moveVelocity: new THREE.Vector3(),
     moveSpeed: 0.12,
     airControl: 0.7,
     groundFriction: 0.85,
@@ -252,8 +250,11 @@ window.App = {
             this.renderer.domElement.requestPointerLock();
             this.velocityy = 0;
             this.isGrounded = true;
-            this.moveVelocity.set(0, 0, 0);
+            this.moveVelocity = new THREE.Vector3(0, 0, 0);
             this.keys = { w: false, a: false, s: false, d: false, " ": false };
+            if (this.floor && !this.solids.includes(this.floor)) {
+                this.solids.push(this.floor);
+            }
         }
     },
 
@@ -277,33 +278,26 @@ window.App = {
         right.y = 0;
         right.normalize();
 
-        const targetVel = new THREE.Vector3();
         const accel = this.isGrounded ? this.moveSpeed : this.moveSpeed * this.airControl;
 
-        if (this.keys.w) targetVel.add(forward.clone().multiplyScalar(accel));
-        if (this.keys.s) targetVel.add(forward.clone().multiplyScalar(-accel));
-        if (this.keys.a) targetVel.add(right.clone().multiplyScalar(-accel));
-        if (this.keys.d) targetVel.add(right.clone().multiplyScalar(accel));
+        if (this.keys.w) this.moveVelocity.add(forward.clone().multiplyScalar(accel));
+        if (this.keys.s) this.moveVelocity.add(forward.clone().multiplyScalar(-accel));
+        if (this.keys.a) this.moveVelocity.add(right.clone().multiplyScalar(-accel));
+        if (this.keys.d) this.moveVelocity.add(right.clone().multiplyScalar(accel));
 
-        this.moveVelocity.lerp(targetVel, this.isGrounded ? (1 - this.groundFriction) : (1 - this.airFriction));
+        const friction = this.isGrounded ? this.groundFriction : this.airFriction;
+        this.moveVelocity.multiplyScalar(friction);
 
         if (this.moveVelocity.length() > 0.001) {
-            const moveVec = this.moveVelocity.clone();
-            if (this.isGrounded) {
-                moveVec.y = 0;
-            }
             const hPos = this.fpcPlayer.position.clone();
-            hPos.y += this.playerHeight * 0.5;
+            hPos.y += 0.5;
 
-            if (!this.checkHorizontalCollision(hPos, moveVec)) {
-                this.fpcPlayer.position.add(moveVec);
+            if (!this.checkHorizontalCollision(hPos, this.moveVelocity)) {
+                this.fpcPlayer.position.add(this.moveVelocity);
             }
         }
 
-        if (this.keys[" "] && this.isGrounded) {
-            this.jump(this.jumpForce);
-        }
-    },
+        },
 
     moveFPC(dir, speed) {
         if (!this.fpcPlayer) return;
@@ -330,30 +324,19 @@ window.App = {
         if (!this.isRunning || !this.fpcPlayer) return;
 
         this.velocityy += this.gravity;
-        const wasGrounded = this.isGrounded;
-
-        const oldY = this.fpcPlayer.position.y;
         this.fpcPlayer.position.y += this.velocityy;
 
-        if (this.velocityy > 0) {
-            if (this.checkCeilingCollision(this.fpcPlayer.position)) {
-                this.fpcPlayer.position.y = this.getCeilingHeight() - 0.01;
-                this.velocityy = 0;
-            }
-        }
-
-        if (this.fpcPlayer.position.y <= 0) {
-            this.fpcPlayer.position.y = 0;
+        const groundHeight = this.getGroundHeight();
+        if (this.fpcPlayer.position.y <= groundHeight) {
+            this.fpcPlayer.position.y = groundHeight;
             this.velocityy = 0;
             this.isGrounded = true;
         } else {
             this.isGrounded = false;
-            const groundHeight = this.getGroundHeight();
-            if (this.fpcPlayer.position.y <= groundHeight) {
-                this.fpcPlayer.position.y = groundHeight;
-                this.velocityy = 0;
-                this.isGrounded = true;
-            }
+        }
+
+        if (this.velocityy > 0 && this.checkCeilingCollision(this.fpcPlayer.position)) {
+            this.velocityy = 0;
         }
     },
 
@@ -370,10 +353,10 @@ window.App = {
     getGroundHeight() {
         if (this.solids.length === 0) return 0;
         const pos = this.fpcPlayer.position.clone();
-        pos.y += this.playerHeight * 0.5;
+        pos.y += 0.1;
         const down = new THREE.Vector3(0, -1, 0);
         const raycaster = new THREE.Raycaster(pos, down);
-        raycaster.far = this.playerHeight + 0.5;
+        raycaster.far = this.playerHeight + 2;
         const intersects = raycaster.intersectObjects(this.solids, true);
         if (intersects.length > 0) {
             return intersects[0].point.y;
