@@ -92,8 +92,18 @@ window.App = {
     fpcPlayer: null,
     velocityy: 0,
     isGrounded: true,
-    gravity: -0.015,
+    gravity: -0.025,
+    jumpForce: 0.18,
     mouseDelta: { x: 0, y: 0 },
+    keys: { w: false, a: false, s: false, d: false, " ": false },
+    moveVelocity: new THREE.Vector3(),
+    moveSpeed: 0.12,
+    airControl: 0.7,
+    groundFriction: 0.85,
+    airFriction: 0.95,
+    playerHeight: 1.6,
+    playerRadius: 0.35,
+    groundCheckDistance: 0.1,
 
     init() {
         let c = document.getElementById('canvas3d');
@@ -126,15 +136,33 @@ window.App = {
 
         window.addEventListener('keydown', (e) => {
             if (!this.isRunning) return;
-            let k = e.key === " " ? " " : e.key;
-            let f = this.keyListeners[k.toLowerCase()] || this.keyListeners[k];
+            let k = e.key.toLowerCase();
+            if (k === " ") k = " ";
+            this.keys[k] = true;
+            let f = this.keyListeners[k] || this.keyListeners[e.key];
             if (f) f();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            let k = e.key.toLowerCase();
+            if (k === " ") k = " ";
+            this.keys[k] = false;
         });
 
         window.addEventListener('mousemove', (e) => {
             if (this.isRunning) {
                 this.mouseDelta.x = e.movementX || 0;
                 this.mouseDelta.y = e.movementY || 0;
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (this.isRunning && this.fpcPlayer && !document.pointerLockElement) {
+                setTimeout(() => {
+                    if (this.isRunning && this.fpcPlayer) {
+                        this.renderer.domElement.requestPointerLock();
+                    }
+                }, 100);
             }
         });
 
@@ -145,7 +173,10 @@ window.App = {
     animate() {
         requestAnimationFrame(() => this.animate());
         if (this.isRunning) {
-            if (this.fpcPlayer) this.updateFPCLook();
+            if (this.fpcPlayer) {
+                this.updateFPCLook();
+                this.updateFPCMovement();
+            }
             this.updatePhysics();
             this.tickListeners.forEach(f => f());
             Object.values(this.objects).forEach(o => {
@@ -215,10 +246,14 @@ window.App = {
         this.fpcPlayer = this.objects[name];
         if (this.fpcPlayer) {
             this.fpcPlayer.add(this.camera);
-            this.camera.position.set(0, 1.6, 0);
+            this.camera.position.set(0, this.playerHeight, 0);
             this.camera.rotation.set(0, 0, 0);
             this.controls.enabled = false;
             this.renderer.domElement.requestPointerLock();
+            this.velocityy = 0;
+            this.isGrounded = true;
+            this.moveVelocity.set(0, 0, 0);
+            this.keys = { w: false, a: false, s: false, d: false, " ": false };
         }
     },
 
@@ -231,6 +266,45 @@ window.App = {
         this.mouseDelta = { x: 0, y: 0 };
     },
 
+    updateFPCMovement() {
+        if (!this.fpcPlayer) return;
+
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.fpcPlayer.quaternion);
+        forward.y = 0;
+        forward.normalize();
+
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.fpcPlayer.quaternion);
+        right.y = 0;
+        right.normalize();
+
+        const targetVel = new THREE.Vector3();
+        const accel = this.isGrounded ? this.moveSpeed : this.moveSpeed * this.airControl;
+
+        if (this.keys.w) targetVel.add(forward.clone().multiplyScalar(accel));
+        if (this.keys.s) targetVel.add(forward.clone().multiplyScalar(-accel));
+        if (this.keys.a) targetVel.add(right.clone().multiplyScalar(-accel));
+        if (this.keys.d) targetVel.add(right.clone().multiplyScalar(accel));
+
+        this.moveVelocity.lerp(targetVel, this.isGrounded ? (1 - this.groundFriction) : (1 - this.airFriction));
+
+        if (this.moveVelocity.length() > 0.001) {
+            const moveVec = this.moveVelocity.clone();
+            if (this.isGrounded) {
+                moveVec.y = 0;
+            }
+            const hPos = this.fpcPlayer.position.clone();
+            hPos.y += this.playerHeight * 0.5;
+
+            if (!this.checkHorizontalCollision(hPos, moveVec)) {
+                this.fpcPlayer.position.add(moveVec);
+            }
+        }
+
+        if (this.keys[" "] && this.isGrounded) {
+            this.jump(this.jumpForce);
+        }
+    },
+
     moveFPC(dir, speed) {
         if (!this.fpcPlayer) return;
         const s = parseFloat(speed);
@@ -240,7 +314,7 @@ window.App = {
         if (dir === 'left') moveVec.x -= s;
         if (dir === 'right') moveVec.x += s;
         moveVec.applyQuaternion(this.fpcPlayer.quaternion);
-        if (!this.checkCollision(this.fpcPlayer.position, moveVec, s)) {
+        if (!this.checkHorizontalCollision(this.fpcPlayer.position, moveVec)) {
             this.fpcPlayer.position.add(moveVec);
         }
     },
@@ -254,14 +328,32 @@ window.App = {
 
     updatePhysics() {
         if (!this.isRunning || !this.fpcPlayer) return;
+
         this.velocityy += this.gravity;
+        const wasGrounded = this.isGrounded;
+
+        const oldY = this.fpcPlayer.position.y;
         this.fpcPlayer.position.y += this.velocityy;
+
+        if (this.velocityy > 0) {
+            if (this.checkCeilingCollision(this.fpcPlayer.position)) {
+                this.fpcPlayer.position.y = this.getCeilingHeight() - 0.01;
+                this.velocityy = 0;
+            }
+        }
+
         if (this.fpcPlayer.position.y <= 0) {
             this.fpcPlayer.position.y = 0;
             this.velocityy = 0;
             this.isGrounded = true;
         } else {
             this.isGrounded = false;
+            const groundHeight = this.getGroundHeight();
+            if (this.fpcPlayer.position.y <= groundHeight) {
+                this.fpcPlayer.position.y = groundHeight;
+                this.velocityy = 0;
+                this.isGrounded = true;
+            }
         }
     },
 
@@ -275,11 +367,62 @@ window.App = {
         }
     },
 
+    getGroundHeight() {
+        if (this.solids.length === 0) return 0;
+        const pos = this.fpcPlayer.position.clone();
+        pos.y += this.playerHeight * 0.5;
+        const down = new THREE.Vector3(0, -1, 0);
+        const raycaster = new THREE.Raycaster(pos, down);
+        raycaster.far = this.playerHeight + 0.5;
+        const intersects = raycaster.intersectObjects(this.solids, true);
+        if (intersects.length > 0) {
+            return intersects[0].point.y;
+        }
+        return 0;
+    },
+
+    getCeilingHeight() {
+        if (this.solids.length === 0) return 1000;
+        const pos = this.fpcPlayer.position.clone();
+        pos.y += this.playerHeight * 0.5;
+        const up = new THREE.Vector3(0, 1, 0);
+        const raycaster = new THREE.Raycaster(pos, up);
+        raycaster.far = this.playerHeight + 1;
+        const intersects = raycaster.intersectObjects(this.solids, true);
+        if (intersects.length > 0) {
+            return intersects[0].point.y;
+        }
+        return 1000;
+    },
+
+    checkHorizontalCollision(currentPos, direction) {
+        if (this.solids.length === 0 || direction.length() < 0.001) return false;
+        const pos = currentPos.clone();
+        pos.y += this.playerHeight * 0.5;
+        const dir = direction.clone().normalize();
+        const dist = direction.length() + this.playerRadius;
+        const raycaster = new THREE.Raycaster(pos, dir);
+        raycaster.far = dist;
+        const intersects = raycaster.intersectObjects(this.solids, true);
+        return intersects.length > 0 && intersects[0].distance < dist;
+    },
+
+    checkCeilingCollision(currentPos) {
+        if (this.solids.length === 0) return false;
+        const pos = currentPos.clone();
+        pos.y += this.playerHeight;
+        const up = new THREE.Vector3(0, 1, 0);
+        const raycaster = new THREE.Raycaster(pos, up);
+        raycaster.far = 0.3;
+        const intersects = raycaster.intersectObjects(this.solids, true);
+        return intersects.length > 0;
+    },
+
     checkCollision(currentPos, direction, distance) {
         if (this.solids.length === 0) return false;
         const raycaster = new THREE.Raycaster(currentPos, direction.clone().normalize());
         const intersections = raycaster.intersectObjects(this.solids);
-        return intersections.length > 0 && intersections[0].distance < distance + 0.5;
+        return intersections.length > 0 && intersections[0].distance < distance + this.playerRadius;
     },
 
     checkCollisionBetween(name1, name2) {
@@ -553,10 +696,8 @@ window.App = {
             statusTag.style.color = "";
         }
 
-        // Pointer Lock lösen, falls aktiv
         document.exitPointerLock?.();
 
-        // UI Elemente entfernen
         Object.values(this.uiElements).forEach(el => el.remove());
         this.uiElements = {};
         const hud = document.getElementById('gameHUD');
@@ -565,7 +706,6 @@ window.App = {
             hud.innerHTML = "";
         }
 
-        // Kamera reset
         if (this.camera) {
             this.scene.attach(this.camera);
             this.camera.position.set(8, 8, 8);
@@ -573,7 +713,6 @@ window.App = {
             this.camera.lookAt(0, 0, 0);
         }
 
-        // 3D Objekte entfernen
         Object.keys(this.objects).forEach(name => {
             const obj = this.objects[name];
             this.scene.remove(obj);
@@ -589,6 +728,11 @@ window.App = {
         this.tickListeners = [];
         this.keyListeners = {};
         this.variables = {};
+        this.fpcPlayer = null;
+        this.velocityy = 0;
+        this.isGrounded = true;
+        this.moveVelocity = new THREE.Vector3();
+        this.keys = { w: false, a: false, s: false, d: false, " ": false };
 
         this.updateExplorer();
         Object.keys(this.particleSystems).forEach(id => {
