@@ -102,6 +102,9 @@ window.App = {
     playerHeight: 1.6,
     playerRadius: 0.35,
     groundCheckDistance: 0.1,
+    chunkSize: 16,
+    chunkData: new Map(),
+    solidCache: new Map(),
 
     init() {
         let c = document.getElementById('canvas3d');
@@ -356,67 +359,169 @@ window.App = {
         if (!obj) return;
         if (isSolid) {
             if (!this.solids.includes(obj)) this.solids.push(obj);
+            this.cacheSolidObject(obj);
         } else {
             this.solids = this.solids.filter(s => s !== obj);
+            this.uncacheSolidObject(obj);
         }
+    },
+
+    cacheSolidObject(obj) {
+        if (!obj.geometry || !obj.geometry.boundingBox) {
+            obj.geometry.computeBoundingBox();
+        }
+        const box = new THREE.Box3();
+        box.setFromObject(obj);
+        const minX = Math.floor(box.min.x / this.chunkSize);
+        const maxX = Math.floor(box.max.x / this.chunkSize);
+        const minY = Math.floor(box.min.y / this.chunkSize);
+        const maxY = Math.floor(box.max.y / this.chunkSize);
+        const minZ = Math.floor(box.min.z / this.chunkSize);
+        const maxZ = Math.floor(box.max.z / this.chunkSize);
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    const key = `${x},${y},${z}`;
+                    if (!this.solidCache.has(key)) this.solidCache.set(key, []);
+                    this.solidCache.get(key).push(obj);
+                }
+            }
+        }
+    },
+
+    uncacheSolidObject(obj) {
+        if (!obj.geometry || !obj.geometry.boundingBox) {
+            obj.geometry.computeBoundingBox();
+        }
+        const box = new THREE.Box3();
+        box.setFromObject(obj);
+        const minX = Math.floor(box.min.x / this.chunkSize);
+        const maxX = Math.floor(box.max.x / this.chunkSize);
+        const minY = Math.floor(box.min.y / this.chunkSize);
+        const maxY = Math.floor(box.max.y / this.chunkSize);
+        const minZ = Math.floor(box.min.z / this.chunkSize);
+        const maxZ = Math.floor(box.max.z / this.chunkSize);
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    const key = `${x},${y},${z}`;
+                    const arr = this.solidCache.get(key);
+                    if (arr) {
+                        const idx = arr.indexOf(obj);
+                        if (idx > -1) arr.splice(idx, 1);
+                    }
+                }
+            }
+        }
+    },
+
+    getNearbySolids(pos, radius = 1) {
+        const nearby = [];
+        const cx = Math.floor(pos.x / this.chunkSize);
+        const cy = Math.floor(pos.y / this.chunkSize);
+        const cz = Math.floor(pos.z / this.chunkSize);
+        const rc = Math.ceil(radius / this.chunkSize) + 1;
+        for (let x = cx - rc; x <= cx + rc; x++) {
+            for (let y = cy - rc; y <= cy + rc; y++) {
+                for (let z = cz - rc; z <= cz + rc; z++) {
+                    const key = `${x},${y},${z}`;
+                    const arr = this.solidCache.get(key);
+                    if (arr) {
+                        for (let i = arr.length - 1; i >= 0; i--) {
+                            if (!nearby.includes(arr[i])) nearby.push(arr[i]);
+                        }
+                    }
+                }
+            }
+        }
+        return nearby;
     },
 
     getGroundHeight() {
-        if (this.solids.length === 0) return 0;
-        const pos = this.fpcPlayer.position.clone();
-        pos.y += 0.1;
-        const down = new THREE.Vector3(0, -1, 0);
-        const raycaster = new THREE.Raycaster(pos, down);
-        raycaster.far = this.playerHeight + 2;
-        const intersects = raycaster.intersectObjects(this.solids, true);
-        if (intersects.length > 0) {
-            return intersects[0].point.y;
+        const pos = this.fpcPlayer.position;
+        const nearby = this.getNearbySolids(pos, 2);
+        if (nearby.length === 0) return 0;
+        const playerBox = new THREE.Box3(
+            new THREE.Vector3(pos.x - this.playerRadius, pos.y, pos.z - this.playerRadius),
+            new THREE.Vector3(pos.x + this.playerRadius, pos.y + this.playerHeight + 0.1, pos.z + this.playerRadius)
+        );
+        let maxY = 0;
+        for (const obj of nearby) {
+            const box = new THREE.Box3().setFromObject(obj);
+            if (box.min.x < playerBox.max.x && box.max.x > playerBox.min.x &&
+                box.min.z < playerBox.max.z && box.max.z > playerBox.min.z) {
+                if (box.min.y <= playerBox.max.y && box.min.y > maxY) {
+                    maxY = box.min.y;
+                }
+            }
         }
-        return 0;
+        return maxY;
     },
 
     getCeilingHeight() {
-        if (this.solids.length === 0) return 1000;
-        const pos = this.fpcPlayer.position.clone();
-        pos.y += this.playerHeight * 0.5;
-        const up = new THREE.Vector3(0, 1, 0);
-        const raycaster = new THREE.Raycaster(pos, up);
-        raycaster.far = this.playerHeight + 1;
-        const intersects = raycaster.intersectObjects(this.solids, true);
-        if (intersects.length > 0) {
-            return intersects[0].point.y;
+        const pos = this.fpcPlayer.position;
+        const nearby = this.getNearbySolids(pos, 2);
+        if (nearby.length === 0) return 1000;
+        const playerBox = new THREE.Box3(
+            new THREE.Vector3(pos.x - this.playerRadius, pos.y, pos.z - this.playerRadius),
+            new THREE.Vector3(pos.x + this.playerRadius, pos.y + this.playerHeight, pos.z + this.playerRadius)
+        );
+        let minY = 1000;
+        for (const obj of nearby) {
+            const box = new THREE.Box3().setFromObject(obj);
+            if (box.min.x < playerBox.max.x && box.max.x > playerBox.min.x &&
+                box.min.z < playerBox.max.z && box.max.z > playerBox.min.z) {
+                if (box.max.y >= playerBox.min.y && box.max.y < minY) {
+                    minY = box.max.y;
+                }
+            }
         }
-        return 1000;
+        return minY;
     },
 
     checkHorizontalCollision(currentPos, direction) {
-        if (this.solids.length === 0 || direction.length() < 0.001) return false;
-        const pos = currentPos.clone();
-        pos.y += this.playerHeight * 0.5;
-        const dir = direction.clone().normalize();
-        const dist = direction.length() + this.playerRadius;
-        const raycaster = new THREE.Raycaster(pos, dir);
-        raycaster.far = dist;
-        const intersects = raycaster.intersectObjects(this.solids, true);
-        return intersects.length > 0 && intersects[0].distance < dist;
+        if (direction.length() < 0.001) return false;
+        const nearby = this.getNearbySolids(currentPos, 3);
+        if (nearby.length === 0) return false;
+        const dx = direction.x;
+        const dz = direction.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        const newPos = currentPos.clone();
+        newPos.x += dx;
+        newPos.z += dz;
+        const playerBox = new THREE.Box3(
+            new THREE.Vector3(newPos.x - this.playerRadius, currentPos.y + 0.1, newPos.z - this.playerRadius),
+            new THREE.Vector3(newPos.x + this.playerRadius, currentPos.y + this.playerHeight, newPos.z + this.playerRadius)
+        );
+        for (const obj of nearby) {
+            const box = new THREE.Box3().setFromObject(obj);
+            if (playerBox.intersectsBox(box)) return true;
+        }
+        return false;
     },
 
     checkCeilingCollision(currentPos) {
-        if (this.solids.length === 0) return false;
-        const pos = currentPos.clone();
-        pos.y += this.playerHeight;
-        const up = new THREE.Vector3(0, 1, 0);
-        const raycaster = new THREE.Raycaster(pos, up);
-        raycaster.far = 0.3;
-        const intersects = raycaster.intersectObjects(this.solids, true);
-        return intersects.length > 0;
+        const nearby = this.getNearbySolids(currentPos, 2);
+        if (nearby.length === 0) return false;
+        const playerBox = new THREE.Box3(
+            new THREE.Vector3(currentPos.x - this.playerRadius + 0.1, currentPos.y + this.playerHeight - 0.1, currentPos.z - this.playerRadius + 0.1),
+            new THREE.Vector3(currentPos.x + this.playerRadius - 0.1, currentPos.y + this.playerHeight + 0.2, currentPos.z + this.playerRadius - 0.1)
+        );
+        for (const obj of nearby) {
+            const box = new THREE.Box3().setFromObject(obj);
+            if (playerBox.intersectsBox(box)) return true;
+        }
+        return false;
     },
 
     checkCollision(currentPos, direction, distance) {
-        if (this.solids.length === 0) return false;
-        const raycaster = new THREE.Raycaster(currentPos, direction.clone().normalize());
-        const intersections = raycaster.intersectObjects(this.solids);
-        return intersections.length > 0 && intersections[0].distance < distance + this.playerRadius;
+        const nearby = this.getNearbySolids(currentPos, distance + 2);
+        if (nearby.length === 0) return false;
+        const dir = direction.clone().normalize();
+        const endPos = currentPos.clone().add(dir.clone().multiplyScalar(distance + this.playerRadius));
+        const raycaster = new THREE.Raycaster(currentPos, dir, 0, distance + this.playerRadius);
+        const intersects = raycaster.intersectObjects(nearby, true);
+        return intersects.length > 0;
     },
 
     checkCollisionBetween(name1, name2) {
@@ -426,6 +531,90 @@ window.App = {
         const box1 = new THREE.Box3().setFromObject(obj1);
         const box2 = new THREE.Box3().setFromObject(obj2);
         return box1.intersectsBox(box2);
+    },
+
+    generateChunk(chunkX, chunkZ, terrainFunc, blockSize = 1, height = 16) {
+        const key = `${chunkX},${chunkZ}`;
+        if (this.chunkData.has(key)) return this.chunkData.get(key);
+        const startX = chunkX * this.chunkSize * blockSize;
+        const startZ = chunkZ * this.chunkSize * blockSize;
+        const group = new THREE.Group();
+        group.name = `chunk_${chunkX}_${chunkZ}`;
+        const blocks = [];
+        for (let x = 0; x < this.chunkSize; x++) {
+            for (let z = 0; z < this.chunkSize; z++) {
+                const wx = startX + x * blockSize;
+                const wz = startZ + z * blockSize;
+                const wy = terrainFunc(wx, wz);
+                if (Array.isArray(wy)) {
+                    for (let y = wy[0]; y <= wy[1]; y++) {
+                        const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+                        const mat = new THREE.MeshStandardMaterial({ color: y === wy[0] ? 0x4a7c4e : 0x8b7355 });
+                        const mesh = new THREE.Mesh(geo, mat);
+                        mesh.position.set(wx, y * blockSize, wz);
+                        mesh.userData.isTerrain = true;
+                        mesh.userData.chunk = key;
+                        group.add(mesh);
+                        blocks.push(mesh);
+                    }
+                } else {
+                    for (let y = 0; y <= wy; y++) {
+                        const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+                        let color = 0x8b7355;
+                        if (y === wy) color = 0x4a7c4e;
+                        else if (y > wy - 3) color = 0x6b5344;
+                        const mat = new THREE.MeshStandardMaterial({ color });
+                        const mesh = new THREE.Mesh(geo, mat);
+                        mesh.position.set(wx, y * blockSize, wz);
+                        mesh.userData.isTerrain = true;
+                        mesh.userData.chunk = key;
+                        group.add(mesh);
+                        blocks.push(mesh);
+                    }
+                }
+            }
+        }
+        this.scene.add(group);
+        this.chunkData.set(key, { group, blocks, chunkX, chunkZ });
+        for (const block of blocks) {
+            this.objects[block.uuid] = block;
+            this.solids.push(block);
+            this.cacheSolidObject(block);
+        }
+        return this.chunkData.get(key);
+    },
+
+    removeChunk(chunkX, chunkZ) {
+        const key = `${chunkX},${chunkZ}`;
+        const chunk = this.chunkData.get(key);
+        if (!chunk) return;
+        for (const block of chunk.blocks) {
+            delete this.objects[block.uuid];
+            const idx = this.solids.indexOf(block);
+            if (idx > -1) this.solids.splice(idx, 1);
+            this.uncacheSolidObject(block);
+            block.geometry.dispose();
+            block.material.dispose();
+        }
+        this.scene.remove(chunk.group);
+        this.chunkData.delete(key);
+    },
+
+    updateChunks(centerX, centerZ, radius = 2, terrainFunc, blockSize = 1) {
+        const playerChunkX = Math.floor(centerX / (this.chunkSize * blockSize));
+        const playerChunkZ = Math.floor(centerZ / (this.chunkSize * blockSize));
+        for (const [key, chunk] of this.chunkData) {
+            const dx = Math.abs(chunk.chunkX - playerChunkX);
+            const dz = Math.abs(chunk.chunkZ - playerChunkZ);
+            if (dx > radius || dz > radius) {
+                this.removeChunk(chunk.chunkX, chunk.chunkZ);
+            }
+        }
+        for (let x = -radius; x <= radius; x++) {
+            for (let z = -radius; z <= radius; z++) {
+                this.generateChunk(playerChunkX + x, playerChunkZ + z, terrainFunc, blockSize);
+            }
+        }
     },
 
     createUI(type, id, x, y, w, h, text = "", texture = "", parentId = null) {
